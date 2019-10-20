@@ -1,0 +1,60 @@
+<form>
+  <label>Data Pipeline Latency</label>
+  <fieldset submitButton="true">
+    <input type="dropdown" searchWhenChanged="false" token="select_index">
+      <label>Select Index</label>
+      <search>
+        <query>| tstats count where index=* OR index=_* by index
+| sort index</query>
+      </search>
+      <fieldForLabel>index</fieldForLabel>
+      <fieldForValue>index</fieldForValue>
+      <initialValue>_internal</initialValue>
+    </input>
+    <input type="dropdown" searchWhenChanged="false" token="select_sourcetype">
+      <label>Sourcetype</label>
+      <search>
+        <query>| tstats count where index=* OR index=_* by index sourcetype 
+| where index="$select_index$" 
+| sort sourcetype</query>
+      </search>
+      <fieldForLabel>sourcetype</fieldForLabel>
+      <fieldForValue>sourcetype</fieldForValue>
+      <choice value="*">All</choice>
+      <default>*</default>
+    </input>
+    <input type="text" token="host">
+      <label>Host</label>
+      <default>*</default>
+    </input>
+    <input type="time" searchWhenChanged="false" token="select_time">
+      <label></label>
+      <default>
+        <earliest>-60m@m</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <table>
+        <title>Data Pipeline Latency</title>
+        <search>
+          <query>index=$select_index$ sourcetype=$select_sourcetype$ host=$host$ 
+| eval timediff=_indextime - _time 
+| stats count AS "Event Count" max(timediff) AS "Largest Time Difference" min(timediff) AS "Smallest Time Difference" avg(timediff) AS Average_Time_Difference by host 
+| eval "Time Difference (Minutes)" = Average_Time_Difference/60 
+| rename Average_Time_Difference AS "Average Time Difference (Seconds)"</query>
+          <earliest>$select_time.earliest$</earliest>
+          <latest>$select_time.latest$</latest>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+</form>

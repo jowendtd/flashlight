@@ -1,0 +1,77 @@
+<form>
+  <label>Splunk Errors</label>
+  <fieldset submitButton="false">
+    <input type="time" token="time_select">
+      <label>Time Range:</label>
+      <default>
+        <earliest>-60m@m</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <chart>
+        <search>
+          <query>index=_internal sourcetype=splunkd (log_level=ERROR OR log_level=WARN) 
+| timechart count</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Splunk Daemon Errors</title>
+        <search>
+          <query>index=_internal sourcetype=splunkd (log_level=ERROR OR log_level=WARN) 
+| cluster showcount=t field=message 
+| table cluster_count host log_level message 
+| sort +log_level, -cluster_count 
+| rename cluster_count AS Count host AS Hostname log_level AS "Severity" message AS "Error Message"</query>
+          <earliest>$time_select.earliest$</earliest>
+          <latest>$time_select.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Splunk Alerts</title>
+        <search>
+          <query>(index=_internal "No space left on device") OR (index=_audit "|delete" NOT "index=_audit") OR (index=_audit action="login attempt" info=failed sourcetype="audittrail") OR (index=_internal source=splunkd.log component=serverclass warn NOT "machineTypes in app * is deprecated") OR (index=_audit action=edit_user (operation=create OR operation=remove)) 
+| eval Alert = case(action="edit_user" AND operation="create", "User account created", action="edit_user" AND operation="remove", "User account deleted", match(_raw, "Unable to load application"), "Serverclass.conf issue", match(_raw, "delete"), "Delete used", action="login attempt" AND info="failed", "Failed local login", match(_raw,"No space left on device"), "No space on device", 1=1, "fix me" ) 
+| eval Message = case(Alert="User account deleted", "User: " .user. " - Deleted: " .object, Alert="User account created", "User: " .user. " - Created: " .object, Alert="Failed local login", "User: " .user, Alert="Delete used", "User: " .user. " - Search: " .search, Alert="Serverclass.conf issue", message. " (Probably a spelling issue)", Alert="No space on device", "Diskspace or inodes issues", 1=1, "fix me") 
+| eval a_time = strftime(_time,"%F %T") 
+| stats count by a_time host Alert Message 
+| rename a_time AS DateTime host AS Host count AS Count 
+| sort - DateTime</query>
+          <earliest>$time_select.earliest$</earliest>
+          <latest>$time_select.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+</form>

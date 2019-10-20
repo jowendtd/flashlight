@@ -1,0 +1,274 @@
+<form>
+  <label>License Pool Drilldown</label>
+  <fieldset submitButton="false" autoRun="false">
+    <input type="dropdown" searchWhenChanged="true" token="license_pool">
+      <label>License Pool</label>
+      <search>
+        <query>| rest splunk_server_group=dmc_group_license_master /services/licenser/pools
+| stats count by title
+| sort title</query>
+        <earliest>-1d@d</earliest>
+        <latest>@d</latest>
+      </search>
+      <fieldForLabel>title</fieldForLabel>
+      <fieldForValue>title</fieldForValue>
+      <default>auto_generated_pool_enterprise</default>
+      <initialValue>auto_generated_pool_enterprise</initialValue>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <table>
+        <title>License Breakdown</title>
+        <search>
+          <query>| inputlookup license_info.csv 
+| table owner_group description label quotaMB license_creation license_expire support_expire entitlement 
+| rename description AS Description entitlement AS Entitlement label AS Label license_creation as "License Creation" license_expire AS "License Expiration" owner_group AS "Business Owner" quotaMB AS "Quota" support_expire AS "Support Expiration"</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+        <format type="number" field="Quota MB">
+          <option name="precision">0</option>
+          <option name="unit">MB</option>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <single>
+        <title>License Utilization Today (GB)</title>
+        <search>
+          <query>| inputlookup currentLicenseB.csv where LicensePool="$license_pool$" 
+| stats sum(totalB) AS totalB 
+| eval totalGB=(totalB/1024/1024/1024) 
+| table totalGB</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="numberPrecision">0.00</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="unit">GB</option>
+      </single>
+    </panel>
+    <panel>
+      <chart>
+        <title>License Utilization (30 Days)</title>
+        <search>
+          <query>index=summary_license_history pool=$license_pool$ 
+| chart first(volume_b) AS Total_B first(quota_b) AS Quota_B OVER date 
+| eval TotalGB=Total_B/1024/1024/1024 
+| eval QuotaGB=Quota_B/1024/1024/1024 
+| fields date TotalGB QuotaGB 
+| stats avg(TotalGB) AS avgVolumeGB max(TotalGB) AS maxVolumeGB min(TotalGB) AS minVolumeGB 
+| eval minVolumeGB=round(minVolumeGB,2) 
+| eval maxVolumeGB=round(maxVolumeGB,2) 
+| eval avgVolumeGB=round(avgVolumeGB,2) 
+| rename minVolumeGB AS "valley" avgVolumeGB AS "average" maxVolumeGB AS "peak" 
+| fields Pool valley average peak</query>
+          <earliest>-30d@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">all</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Days Above Average</title>
+      <single>
+        <search>
+          <query>index=summary_license_history pool=$license_pool$ 
+| chart first(volume_b) AS Total_B first(quota_b) AS Quota_B OVER date 
+| eval TotalGB=Total_B/1024/1024/1024 
+| fields date TotalGB 
+| eventstats avg(TotalGB) AS avgTotalGB 
+| where TotalGB&gt;avgTotalGB 
+| stats count</query>
+          <earliest>-30d@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="colorMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="numberPrecision">0</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="useColors">0</option>
+        <option name="useThousandSeparators">1</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Days Within 10% of Peak</title>
+      <single>
+        <search>
+          <query>index=summary_license_history pool=$license_pool$ 
+| chart first(volume_b) AS Total_B first(quota_b) AS Quota_B OVER date 
+| eval TotalGB=Total_B/1024/1024/1024 
+| fields date TotalGB 
+| eventstats max(TotalGB) AS maxTotalGB 
+| where TotalGB&gt;(.9*maxTotalGB) 
+| stats count</query>
+          <earliest>-30d@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="colorMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="numberPrecision">0</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="useColors">0</option>
+        <option name="useThousandSeparators">1</option>
+      </single>
+    </panel>
+    <panel>
+      <table>
+        <search>
+          <query>index=summary_license_history pool=$license_pool$ 
+| chart first(volume_b) AS Total_B first(quota_b) AS Quota_B OVER date 
+| eval TotalGB=Total_B/1024/1024/1024 
+| fields date TotalGB 
+| eventstats avg(TotalGB) AS avgTotalGB 
+| where TotalGB&gt;avgTotalGB 
+| sort - date 
+| eval TotalGB=round(TotalGB,2) 
+| eval avgTotalGB=round(avgTotalGB,2) 
+| rename TotalGB AS "Total GB Used" avgTotalGB AS "Avg GB Used"</query>
+          <earliest>-30d@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">5</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">row</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>License Utilization GB (30 Days)</title>
+        <search>
+          <query>index=summary_license_history pool=$license_pool$ 
+| timechart first(volume_b) AS Total_B first(quota_b) AS Quota_B 
+| eval TotalGB=round(Total_B/1024/1024/1024,2) 
+| eval QuotaGB=round(Quota_B/1024/1024/1024,2) 
+| fields _time TotalGB QuotaGB</query>
+          <earliest>-30d@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.overlayFields">QuotaGB</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <input type="text" searchWhenChanged="true" token="predictdays">
+        <label>Number of Days to Predict</label>
+        <default>30</default>
+      </input>
+      <chart>
+        <title>License Utilization (GB)</title>
+        <search>
+          <query>index=summary_license_history pool=$license_pool$ 
+| timechart first(volume_b) AS Total_B first(quota_b) AS Quota_B 
+| eval TotalGB=Total_B/1024/1024/1024 
+| eval QuotaGB=Quota_B/1024/1024/1024 
+| fields _time TotalGB QuotaGB 
+| trendline sma10(TotalGB) AS trend_used 
+| predict TotalGB as TotalGB_predicted future_timespan=$predictdays$ 
+| trendline sma27(TotalGB_predicted) AS trend_predicted 
+| filldown QuotaGB</query>
+          <earliest>-30d@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">collapsed</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">connect</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+</form>

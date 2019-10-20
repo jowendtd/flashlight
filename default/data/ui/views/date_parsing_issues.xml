@@ -1,0 +1,57 @@
+<form>
+  <label>Date Parsing Issues</label>
+  <fieldset submitButton="false">
+    <input type="time" token="timeselect">
+      <label>Time Range:</label>
+      <default>
+        <earliest>-4h@m</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <table>
+        <search>
+          <query>index=_internal sourcetype=splunkd component=DateParserVerbose log_level=WARN 
+| rex "Context:\s+source::(?&lt;data_source&gt;[^\|]+)\|host::(?&lt;data_host&gt;[^\|]+)\|(?&lt;data_sourcetype&gt;[^\|]+)" 
+| cluster field=message showcount=true 
+| stats first(message) AS message by cluster_count 
+| sort - cluster_count 
+| table cluster_count message 
+| rename cluster_count as Count message as Message</query>
+          <earliest>$timeselect.earliest$</earliest>
+          <latest>$timeselect.latest$</latest>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">heatmap</option>
+        <option name="drilldown">row</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Details</title>
+        <search>
+          <query>index=_internal sourcetype=splunkd component=DateParserVerbose log_level=WARN 
+| rex "Context:\s+source::(?&lt;data_source&gt;[^\|]+)\|host::(?&lt;data_host&gt;[^\|]+)\|(?&lt;data_sourcetype&gt;[^\|]+)" 
+| stats count values(data_source) values(data_host) dc(data_source) dc(data_host) BY data_sourcetype 
+| sort - count 
+| rename data_sourcetype AS "Sourcetype" count AS Count "values(data_source)" AS Sources "values(data_host)" AS Hosts "dc(data_source)" AS Sources "dc(data_host)" AS "Number of Hosts"</query>
+          <earliest>$timeselect.earliest$</earliest>
+          <latest>$timeselect.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+</form>

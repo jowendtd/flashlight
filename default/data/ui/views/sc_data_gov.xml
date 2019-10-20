@@ -1,0 +1,117 @@
+<form>
+  <label>Data Governance</label>
+  <fieldset submitButton="false" autoRun="false">
+    <input type="dropdown" token="select_index" searchWhenChanged="true">
+      <label>Select Index:</label>
+      <fieldForLabel>index</fieldForLabel>
+      <fieldForValue>index</fieldForValue>
+      <search>
+        <query>| tstats count where index=* OR index=_* by index
+| sort index</query>
+        <earliest>0</earliest>
+        <latest></latest>
+      </search>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <table>
+        <title>Users With Access</title>
+        <search>
+          <query>| rest splunk_server_group=dmc_group_search_head /services/authentication/users 
+| eval roles=mvjoin(roles, ", ") 
+| fields title, roles 
+| rename title AS username 
+| makemv delim=", " roles 
+| mvexpand roles 
+| rename roles AS role 
+| join role 
+    [| rest splunk_server_group=dmc_group_search_head /services/authorization/roles 
+    | rename title AS role 
+    | fillnull value="" 
+    | fields role, srchIndexesAllowed] 
+| fields username, srchIndexesAllowed 
+| rex field=srchIndexesAllowed mode=sed "s/\s/,/g" 
+| makemv delim="," srchIndexesAllowed 
+| mvcombine srchIndexesAllowed 
+| mvcombine srchIndexesAllowed 
+| rex field=srchIndexesAllowed mode=sed "s/\s/,/g" 
+| makemv delim="," srchIndexesAllowed 
+| eventstats values(srchIndexesAllowed) AS didx by username 
+| fields username, didx 
+| mvcombine didx 
+| rex field=didx mode=sed "s/\s/, /g" 
+| rename didx AS accessible_indexes 
+| join username 
+    [| rest splunk_server_group=dmc_group_search_head /services/authentication/users 
+    | eval roles=mvjoin(roles, ", ") 
+    | rename title AS username 
+    | fields username, roles] 
+| makemv delim=", " roles 
+| makemv delim=", " accessible_indexes 
+| mvexpand roles 
+| mvexpand accessible_indexes 
+| eval searchLit=if(match("$select_index$" ,"^_\w+$"), "_*", "*") 
+| where accessible_indexes=searchLit OR accessible_indexes=$select_index$ 
+| fields - accessible_indexes, searchLit 
+| mvcombine roles 
+| eval roles=mvjoin(roles, ", ") 
+| rename username AS Username roles AS Roles</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <title>Roles With Access</title>
+        <search>
+          <query>| rest splunk_server_group=dmc_group_search_head /services/authentication/users 
+| eval roles=mvjoin(roles, ", ") 
+| fields title, roles 
+| rename title AS username 
+| makemv delim=", " roles 
+| mvexpand roles 
+| rename roles AS role 
+| join role 
+    [| rest splunk_server_group=dmc_group_search_head /services/authorization/roles 
+    | rename title AS role 
+    | fillnull value="" 
+    | fields role, srchIndexesAllowed] 
+| fields username, srchIndexesAllowed 
+| rex field=srchIndexesAllowed mode=sed "s/\s/,/g" 
+| makemv delim="," srchIndexesAllowed 
+| mvcombine srchIndexesAllowed 
+| mvcombine srchIndexesAllowed 
+| rex field=srchIndexesAllowed mode=sed "s/\s/,/g" 
+| makemv delim="," srchIndexesAllowed 
+| eventstats values(srchIndexesAllowed) AS didx by username 
+| fields username, didx 
+| mvcombine didx 
+| rex field=didx mode=sed "s/\s/, /g" 
+| rename didx AS accessible_indexes 
+| join username 
+    [| rest splunk_server_group=dmc_group_search_head /services/authentication/users 
+    | eval roles=mvjoin(roles, ", ") 
+    | rename title AS username 
+    | fields username, roles] 
+| makemv delim=", " roles 
+| makemv delim=", " accessible_indexes 
+| mvexpand roles 
+| mvexpand accessible_indexes 
+| eval searchLit=if(match("$select_index$" ,"^_\w+$"), "_*", "*") 
+| where accessible_indexes=searchLit OR accessible_indexes=$select_index$ 
+| fields - accessible_indexes, searchLit 
+| fields roles 
+| dedup roles 
+| rename roles AS Role 
+| sort Role</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+</form>

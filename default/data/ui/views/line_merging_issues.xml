@@ -1,0 +1,36 @@
+<form>
+  <label>Line Merging Issues</label>
+  <fieldset submitButton="false">
+    <input type="time" token="timeselect">
+      <label>Time Range:</label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <table>
+        <title>Line Merging Issues</title>
+        <search>
+          <query>index=_internal sourcetype=splunkd component=Aggregator* NOT "Too many events * with the same timestamp" 
+| rex "\s-\s(?&lt;message_content&gt;.*?)\s-\sdata" 
+| extract 
+| stats count values(message_content) values(data_source) values(data_host) dc(data_source), dc(data_host) BY data_sourcetype 
+| sort - count 
+| rename data_sourcetype AS Sourcetype count AS Count "values(message_content)" AS Message "values(data_source)" AS "Data Sources" "values(data_host)" AS Hosts 
+| fields - "dc(data_source)" "dc(data_host)"</query>
+          <earliest>$timeselect.earliest$</earliest>
+          <latest>$timeselect.latest$</latest>
+        </search>
+        <option name="count">100</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">true</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+</form>

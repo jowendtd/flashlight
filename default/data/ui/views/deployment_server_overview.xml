@@ -1,0 +1,77 @@
+<dashboard>
+  <label>Deployment Server Overview</label>
+  <row>
+    <panel>
+      <table>
+        <title>Current Deployment Clients</title>
+        <search>
+          <query>| rest splunk_server_group=flashlight_deployment_server /services/deployment/server/clients | stats dc(hostname) AS clients by splunk_server  | sort splunk_server</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Client PhoneHome Attempts</title>
+        <search>
+          <query>index=_internal sourcetype=splunkd component=HttpPubSubConnection message="Running phone uri*" | timechart count</query>
+          <earliest>-4h@m</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">collapsed</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">none</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>Client PhoneHome Success</title>
+        <search>
+          <query>index=_internal sourcetype=splunkd component=DC:HandshakeReplyHandler message="Handshake done." | timechart count</query>
+          <earliest>-4h@m</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">collapsed</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">none</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>Client PhoneHome Failures</title>
+        <search>
+          <query>index=_internal sourcetype=splunkd component=HttpPubSubConnection message="Could not obtain connection*" | timechart count</query>
+          <earliest>-4h@m</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">collapsed</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">none</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Recent Check-Ins</title>
+        <search>
+          <query>index=_internal [| inputlookup server_inventory.csv where primary_role="Deployment Server" | table host ]  component=PubSubSvr channel="deploymentServer/phoneHome/default/reply*" | rex field=message "Subscribed: channel=deploymentServer/phoneHome/default/reply/(?&lt;deploymentClient&gt;\w*\d*)" | eval Date=strftime(_time,"%m/%d/%Y %I:%M:%S %p") | table Date deploymentClient host</query>
+          <earliest>-4h@m</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+</dashboard>

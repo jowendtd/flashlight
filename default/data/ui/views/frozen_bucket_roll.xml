@@ -1,0 +1,22 @@
+<dashboard>
+  <label>Frozen Bucket Roll</label>
+  <row>
+    <panel>
+      <table>
+        <title>Indexer Script Status</title>
+        <search>
+          <query>index=siem_toolbox sourcetype=frozenBucketRoll ("START FROZEN BUCKET ROLL" OR "END FROZEN BUCKET ROLL")
+| stats latest(_time) AS time by message host
+| convert ctime(time) AS time
+| eval status=if(message=="--- START FROZEN BUCKET ROLL ---", "Start: " + time, if(message=="--- END FROZEN BUCKET ROLL ---", "End: " + time, ""))
+| sort - status
+| stats list(status) AS status by host</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">70</option>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+</dashboard>

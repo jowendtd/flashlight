@@ -1,0 +1,30 @@
+<form>
+  <label>Application Governance</label>
+  <fieldset submitButton="true">
+    <input type="dropdown" token="application">
+      <label>Application</label>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+      <fieldForLabel>label</fieldForLabel>
+      <fieldForValue>label</fieldForValue>
+      <search>
+        <query>| rest splunk_server_group=flashlight_search_head /services/apps/local | stats count by label | table label</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <table>
+        <search>
+          <query>| rest splunk_server_group=flashlight_search_head /services/apps/local | search label="$application$" | fillnull value="" label description title | stats values(splunk_server) values(eai:acl.perms.read) values(eai:acl.perms.write) values(eai:acl.sharing) by label title description | rename  label as Label title AS Title description AS Description values(eai:acl.perms.read) AS Read values(eai:acl.perms.write) AS Write values(eai:acl.sharing) AS Sharing "values(splunk_server)" AS "Search Heads" | table Label Title Description Read Write Sharing "Search Heads"</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+</form>

@@ -1,0 +1,249 @@
+<form>
+  <label>Search Job Detail</label>
+  <search id="baseSearch">
+    <query>| rest splunk_server_group=dmc_group_search_head /services/search/jobs/ | search sid="$sid$"</query>
+  </search>
+  <fieldset submitButton="true" autoRun="true">
+    <input type="dropdown" token="select_author">
+      <label>Author</label>
+      <choice value="*">ALL</choice>
+      <initialValue>*</initialValue>
+      <fieldForLabel>author</fieldForLabel>
+      <fieldForValue>author</fieldForValue>
+      <search>
+        <query>| rest splunk_server_group=dmc_group_search_head /services/search/jobs 
+| stats count by author 
+| sort author</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="select_search_head">
+      <label>Search Head</label>
+      <choice value="*">ALL</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+      <fieldForLabel>host</fieldForLabel>
+      <fieldForValue>host</fieldForValue>
+      <search>
+        <query>| rest splunk_server_group=dmc_group_search_head /services/server/info
+| table host
+| sort host</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+    </input>
+    <input type="dropdown" token="select_application">
+      <label>Application</label>
+      <choice value="*">ALL</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+      <fieldForLabel>app</fieldForLabel>
+      <fieldForValue>app</fieldForValue>
+      <search>
+        <query>| rest splunk_server_group=dmc_group_search_head /services/search/jobs 
+| stats count by eai:acl.app 
+| rename eai:acl.app AS app 
+| sort app</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+    </input>
+    <input type="dropdown" token="select_state" searchWhenChanged="false">
+      <label>State</label>
+      <choice value="*">ALL</choice>
+      <choice value="DONE">DONE</choice>
+      <choice value="FAILED">FAILED</choice>
+      <choice value="FINALIZING">FINALIZING</choice>
+      <choice value="PARSING">PARSING</choice>
+      <choice value="RUNNING">RUNNING</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="text" token="select_sid">
+      <label>SID</label>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <table>
+        <title>Search Jobs</title>
+        <search>
+          <query>| rest splunk_server_group=dmc_group_search_head /services/search/jobs 
+| fields author eai:acl.app splunk_server dispatchState sid 
+| search author=$select_author$ splunk_server=$select_search_head$ eai:acl.app=$select_application$ dispatchState=$select_state$ sid=$select_sid$ 
+| head 50 
+| table author eai:acl.app splunk_server dispatchState sid</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <set token="sid">$row.sid$</set>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <single>
+        <title>Total Jobs Found</title>
+        <search base="baseSearch">
+          <query>stats count</query>
+        </search>
+      </single>
+      <single>
+        <title>Ad-Hoc Jobs Found</title>
+        <search base="baseSearch">
+          <query>stats count(eval(if(isSavedSearch=0, title, null()))) AS count</query>
+        </search>
+      </single>
+      <single>
+        <title>Scheduled Jobs Found</title>
+        <search base="baseSearch">
+          <query>stats count(eval(if(isSavedSearch=1,isSavedSearch,null()))) AS count</query>
+        </search>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <single>
+        <title>Search Disk Consumption (Avg)</title>
+        <search base="baseSearch">
+          <query>| eval diskUsageKB=(diskUsage/1024) 
+| table diskUsageKB 
+| stats avg(diskUsageKB)</query>
+        </search>
+        <option name="refresh.display">progressbar</option>
+        <option name="underLabel">Average</option>
+        <option name="unit">KB</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Search Disk Consumption (Max)</title>
+        <search base="baseSearch">
+          <query>| eval diskUsageKB=(diskUsage/1024) 
+| table diskUsageKB 
+| stats max(diskUsageKB)</query>
+        </search>
+        <option name="refresh.display">progressbar</option>
+        <option name="underLabel">Maximum</option>
+        <option name="unit">KB</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Scanned Events</title>
+        <search base="baseSearch">
+          <query>| table scanCount 
+| stats sum(scanCount)</query>
+        </search>
+        <option name="refresh.display">progressbar</option>
+        <option name="useThousandSeparators">1</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Scanned Buckets</title>
+        <search base="baseSearch">
+          <query>| table searchTotalBucketsCount 
+| stats sum(searchTotalBucketsCount)</query>
+        </search>
+        <option name="refresh.display">progressbar</option>
+        <option name="useThousandSeparators">1</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Events Per Second</title>
+        <search base="baseSearch">
+          <query>| eval eps=scanCount/runDuration 
+| fields eps</query>
+        </search>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Job Duration Histogram</title>
+        <search base="baseSearch">
+          <query>| table runDuration 
+| stats min(runDuration) AS minRunDuration avg(runDuration) AS avgRunDuration max(runDuration) AS maxRunDuration 
+| eval Duration="" 
+| table Duration minRunDuration avgRunDuration maxRunDuration</query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.text">Duration (seconds)</option>
+        <option name="charting.chart">bar</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>Command Histogram</title>
+        <search>
+          <query>| rest splunk_server_group=dmc_group_search_head /services/search/jobs/$sid$ 
+| stats max(performance.command.*.duration_secs) AS *, max(performance.command.search.*.duration_secs) AS * 
+| transpose 
+| rename column AS command, "row 1" as time</query>
+          <earliest>$earliest$</earliest>
+          <latest>$latest$</latest>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Search String</title>
+        <search base="baseSearch">
+          <query>| eval searchString=if(len('request.search')&gt;1, 'request.search', eventSearch) 
+| stats count BY searchString 
+| table searchString</query>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Job Details</title>
+        <search base="baseSearch">
+          <query>| fields author defaultSaveTTL defaultTTL diskUsage dispatchState doneProgress dropCount eai:acl.* earliestTime eventAvailableCount eventCount eventFieldCount id isBatchModeSearch isDone isEventsPreviewEnabled isFailed isFinalized isGoodSummarizationCandidate isPaused isPreviewEnabled isRealTimeSearch isRemoteTimeline isSaved isSavedSearch isTimeCursored isZombie keywords label latestTime normalizedSearch optimizedSearch pid priority provenance published reduceSearch remoteSearch remoteSearchLogs reportSearch resultCount resultIsStreaming resultPreviewCount runDuration sampleRatio sampleSeed savedSearchLabel scanCount searchCanBeEventType searchEarliestTime searchLatestTime searchProviders searchTotalBucketsCount searchTotalEliminatedBucketsCount 
+| transpose</query>
+        </search>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Events Per Indexer</title>
+        <search>
+          <query>| rest splunk_server_group=dmc_group_search_head /services/search/jobs/$sid$ 
+| stats max(performance.dispatch.stream.remote.*.output_count) AS * by sid 
+| table sid, * 
+| transpose</query>
+          <earliest>$earliest$</earliest>
+          <latest>$latest$</latest>
+        </search>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+</form>

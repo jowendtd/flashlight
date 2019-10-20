@@ -1,0 +1,568 @@
+<dashboard>
+  <label>Overview</label>
+  <row>
+    <panel>
+      <chart>
+        <title>Production License</title>
+        <search>
+          <query>| inputlookup currentLicenseB.csv where LicensePool="auto_generated_pool_enterprise" 
+| stats sum(totalB) AS totalB 
+| appendcols 
+    [| rest splunk_server_group=dmc_group_license_master /services/licenser/pools 
+    | where title="auto_generated_pool_enterprise" 
+    | table effective_quota 
+    | rename effective_quota AS quota] 
+| eval usedGB=(totalB/1024/1024/1024) 
+| eval quotaGB=(quota/1024/1024/1024) 
+| table usedGB quotaGB 
+| eval half=(quotaGB*.5) 
+| eval threequart=(quotaGB*.75) 
+| gauge usedGB 0 half threequart quotaGB</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.chart">markerGauge</option>
+        <option name="charting.chart.style">minimal</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>Week on Week Usage</title>
+        <search>
+          <query>index=summary_license_history pool=auto_generated_pool_enterprise earliest=-2w@w latest=@d 
+| eval _time=strptime(date, "%Y/%m/%d") 
+| timechart first(volume_b) AS Total_B first(quota_b) AS Quota_B 
+| eval TotalGB=Total_B/1024/1024/1024 
+| eval QuotaGB=Quota_B/1024/1024/1024 
+| fields _time TotalGB 
+| eval marker=case( _time &lt; relative_time(now(), "-1w@w"), "Two Weeks Ago", _time &lt; relative_time(now(), "@w"), "Last Week", true(), "This Week") 
+| eval dow=strftime(_time, "%A") 
+| timechart first(TotalGB) AS gbytes BY marker 
+| eval _time=case( _time &lt; relative_time(now(), "-1w@w"), _time+2*7*86400, _time &lt; relative_time(now(), "@w"), _time+7*86400, true(), _time) 
+| fieldformat _time=strftime(_time, "%b %d %y") 
+| stats values(*) AS * by _time</query>
+          <earliest>-2w@w</earliest>
+          <latest>@d+1h</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.text">GB Indexed</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.abbreviation">auto</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.mode">seriesCompare</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="trellis.enabled">0</option>
+      </chart>
+    </panel>
+    <panel>
+      <single>
+        <title>Indexing Rate</title>
+        <search>
+          <query>| rest splunk_server_group=dmc_group_indexer /services/server/introspection/queues 
+| search title=parsingQueue* OR title=aggQueue* OR title=typingQueue* OR title=indexQueue* 
+| eval fill_perc=round(current_size_bytes / max_size_bytes * 100,2) 
+| fields splunk_server, title, fill_perc 
+| rex field=title "(?&lt;queue_name&gt;^\w+)(?:\.(?&lt;pipeline_number&gt;\d+))?" 
+| eval fill_perc = if(isnotnull(pipeline_number), "pset".pipeline_number.": ".fill_perc, fill_perc) 
+| chart values(fill_perc) over splunk_server by queue_name 
+| eval pset_count = mvcount(parsingQueue) 
+| join type=outer splunk_server 
+    [| rest splunk_server_group=dmc_group_indexer /services/server/introspection/indexer 
+    | eval average_KBps = round(average_KBps, 0) 
+    | eval status = if((reason == ".") OR (reason == "") OR isnull(reason), status, status.": ".reason) 
+    | fields splunk_server, average_KBps, status] 
+| fields splunk_server pset_count average_KBps status parsingQueue aggQueue typingQueue indexQueue 
+| sort-average_KBps 
+| stats sum(average_KBps)</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="colorBy">trend</option>
+        <option name="colorMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="numberPrecision">0</option>
+        <option name="rangeValues">[0,5000,10000,18000]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="unit">KB/s</option>
+        <option name="useColors">1</option>
+        <option name="useThousandSeparators">1</option>
+      </single>
+      <single>
+        <title>Users</title>
+        <search>
+          <query>| tstats summariesonly=true distinct_count(Web_Access_Events.user) AS Users from datamodel="Log_Splunk_Web_Access" GROUPBY _time</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="colorBy">trend</option>
+        <option name="colorMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="numberPrecision">0</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="useColors">1</option>
+        <option name="useThousandSeparators">1</option>
+      </single>
+      <single>
+        <title>Deployment Clients</title>
+        <search>
+          <query>| rest splunk_server_group=dmc_group_deployment_server /services/deployment/server/clients 
+| stats count by hostname 
+| stats count</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="colorMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="numberPrecision">0</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="useColors">0</option>
+        <option name="useThousandSeparators">1</option>
+      </single>
+      <single>
+        <title>Hosts (24H)</title>
+        <search>
+          <query>| inputlookup daily_host_list.csv 
+| stats count</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Splunk Infrastructure</title>
+      <single>
+        <title>Deployment Servers</title>
+        <search>
+          <query>| inputlookup server_inventory.csv where primary_role="Deployment Server" 
+| stats count</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="refresh.display">progressbar</option>
+      </single>
+      <single>
+        <title>Search Heads</title>
+        <search>
+          <query>| inputlookup server_inventory.csv where primary_role="Search Head" | stats count</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="colorMode">none</option>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0x65a637","0x6db7c6","0xf7bc38","0xf58f39","0xd93f3c"]</option>
+        <option name="rangeValues">[0,30,70,100]</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="trendInterval">auto</option>
+        <option name="underLabel">Nodes</option>
+        <option name="useColors">0</option>
+        <option name="useThousandSeparators">1</option>
+      </single>
+      <single>
+        <title>Indexers</title>
+        <search>
+          <query>| inputlookup server_inventory.csv where primary_role="Indexer" | stats count</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="colorMode">none</option>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0x65a637","0x6db7c6","0xf7bc38","0xf58f39","0xd93f3c"]</option>
+        <option name="rangeValues">[0,30,70,100]</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="trendInterval">auto</option>
+        <option name="underLabel">Nodes</option>
+        <option name="useColors">0</option>
+        <option name="useThousandSeparators">1</option>
+      </single>
+      <single>
+        <title>Heavy Forwarders</title>
+        <search>
+          <query>| inputlookup server_inventory.csv where primary_role="Heavy Forwarder" | stats count</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="colorMode">none</option>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0x65a637","0x6db7c6","0xf7bc38","0xf58f39","0xd93f3c"]</option>
+        <option name="rangeValues">[0,30,70,100]</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="trendInterval">auto</option>
+        <option name="underLabel">Nodes</option>
+        <option name="useColors">0</option>
+        <option name="useThousandSeparators">1</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <single>
+        <title>Node Crashes</title>
+        <search>
+          <query>index=_internal sourcetype=splunkd_crash_log 
+| rex "^\[build\s+(?&lt;splunk_build&gt;\d+)" 
+| rex "Cause:\s+(?&lt;crash_cause&gt;[^\n\r]+)" 
+| rex "Crashing\sthread:\s+(?&lt;crash_thread&gt;\S+)" 
+| search crash_thread=* 
+| stats count</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="colorMode">block</option>
+        <option name="drilldown">all</option>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0x65a637","0xd93f3c"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="trendInterval">auto</option>
+        <option name="useColors">1</option>
+        <option name="useThousandSeparators">1</option>
+        <drilldown>
+          <link target="_blank">/app/flashlight/crash_investigator</link>
+        </drilldown>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Infrastructure Errors</title>
+        <search>
+          <query>index=_internal sourcetype=splunkd 
+    [| inputlookup server_inventory.csv 
+    | table host] (log_level=ERROR) 
+| timechart count</query>
+          <earliest>-60m@m</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="colorMode">block</option>
+        <option name="drilldown">all</option>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0x65a637","0x6db7c6","0xf7bc38","0xf58f39","0xd93f3c"]</option>
+        <option name="rangeValues">[0,10000,20000,40000]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="trendInterval">auto</option>
+        <option name="useColors">1</option>
+        <option name="useThousandSeparators">1</option>
+        <drilldown>
+          <link target="_blank">/app/flashlight/splunk_errors</link>
+        </drilldown>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Data Source Missing &gt; 7D</title>
+        <search>
+          <query>| metadata type=sourcetypes 
+| eval sourcetype = lower(sourcetype) 
+| table sourcetype lastTime 
+| fieldformat "lastTime"=strftime('lastTime', "%D %H:%M:%S %p") 
+| where lastTime &lt; relative_time(now(), "-7d@d") 
+| stats count</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="colorMode">block</option>
+        <option name="drilldown">all</option>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0x65a637","0x6db7c6","0xf7bc38","0xf58f39","0xd93f3c"]</option>
+        <option name="rangeValues">[0,1,5,10]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="trendInterval">auto</option>
+        <option name="useColors">1</option>
+        <option name="useThousandSeparators">1</option>
+        <drilldown>
+          <link target="_blank">/app/flashlight/data_source_health</link>
+        </drilldown>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <single>
+        <title>Failed Bundle Tx (4H)</title>
+        <search>
+          <query>index=_internal 
+    [| inputlookup server_inventory.csv where primary_role="Search Head" 
+    | table host] component=DistributedPeerManager "Unable to distribute to peer" 
+| rex field=message "Unable to distribute to peer named (?&lt;peer_name&gt;[\w\d.:]*) " 
+| table _time host peer_name _raw 
+| timechart count</query>
+          <earliest>-4h@m</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="colorMode">block</option>
+        <option name="drilldown">none</option>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0x65a637","0xf7bc38","0xf58f39","0xd93f3c"]</option>
+        <option name="rangeValues">[0,100,300]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="trendInterval">auto</option>
+        <option name="useColors">1</option>
+        <option name="useThousandSeparators">1</option>
+        <drilldown>
+          <link>/app/flashlight/search_performance_overview</link>
+        </drilldown>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Failed Scheduled Searches Today</title>
+        <search>
+          <query>index=_internal 
+    [| inputlookup server_inventory.csv where primary_role="Search Head" 
+    | table host] source=*scheduler.log app="*" savedsearch_name="*" status="skipped" 
+| timechart count AS "Skipped Executions"</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="colorMode">block</option>
+        <option name="drilldown">all</option>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0x65a637","0xf7bc38","0xf58f39","0xd93f3c"]</option>
+        <option name="rangeValues">[0,50,100]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="trendInterval">auto</option>
+        <option name="useColors">1</option>
+        <option name="useThousandSeparators">1</option>
+        <drilldown>
+          <link>/app/flashlight/search_performance_overview</link>
+        </drilldown>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Orphaned Searches</title>
+        <search>
+          <query>| rest splunk_server=* /servicesNS/-/-/saved/searches add_orphan_field=yes count=0 
+| search orphan=1 disabled=0 is_scheduled=1 
+| fields splunk_server title eai:acl.owner eai:acl.app eai:acl.sharing orphan status is_scheduled cron_schedule next_scheduled_time next_scheduled_time actions 
+| stats count</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0x65a637","0xf7bc38","0xf58f39","0xd93f3c"]</option>
+        <option name="rangeValues">[0,1,5]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Today's Search Performance</title>
+        <search>
+          <query>index=_audit 
+    [| inputlookup server_inventory.csv where primary_role="Search Head" 
+    | table host] action=search user!=splunk-system-user search_id=* info=completed 
+| eval run_time_min=round(total_run_time/60,2) 
+| timechart span=10m count AS "Search Count" avg(run_time_min) AS "Run Time (Min)"</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">1</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.overlayFields">"Run Time (Min)"</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>License Utilization (GB)</title>
+        <search type="annotation">
+          <query>| makeresults | eval _time=strftime(now(),"%D") | eval annotation_label="Today"</query>
+          <earliest>-1m@m</earliest>
+          <latest>now</latest>
+        </search>
+        <search>
+          <query>index=summary_license_history pool="auto_generated_pool_enterprise" 
+| eval _time=strptime(date, "%Y/%m/%d") 
+| timechart first(volume_b) AS Total_B first(quota_b) AS Quota_B 
+| eval TotalGB=Total_B/1024/1024/1024 
+| eval QuotaGB=Quota_B/1024/1024/1024 
+| fields _time TotalGB QuotaGB 
+| trendline sma10(TotalGB) AS trend_used 
+| predict TotalGB as TotalGB_predicted future_timespan=30 
+| trendline sma27(TotalGB_predicted) AS trend_predicted 
+| filldown QuotaGB</query>
+          <earliest>-30d@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">collapsed</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">connect</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Storage Usage (TB)</title>
+        <search type="annotation">
+          <query>| makeresults | eval _time=strftime(now(),"%D") | eval annotation_label="Today"</query>
+          <earliest>-1m@m</earliest>
+          <latest>now</latest>
+        </search>
+        <search>
+          <query>index=summary_storage_history 
+    [ inputlookup server_inventory.csv where (primary_role="Indexer") 
+    | fields host 
+    | rename host AS splunk_host] 
+| eval diskUsageTB=(diskUsageMB/1024/1024) 
+| eval diskTotalTB=(diskTotalMB/1024/1024) 
+| stats sum(diskUsageTB) AS diskUsageTB sum(diskTotalTB) AS diskTotalGB by _time 
+| timechart first(diskUsageTB) AS diskUsageTB first(diskTotalGB) AS diskTotalGB 
+| predict diskUsageTB as diskUsageTB_predicted future_timespan=90 
+| filldown diskTotalGB</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">connect</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+</dashboard>

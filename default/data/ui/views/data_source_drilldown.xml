@@ -1,0 +1,213 @@
+<form>
+  <label>Data Source Drilldown</label>
+  <fieldset submitButton="true">
+    <input type="dropdown" searchWhenChanged="false" token="select_index">
+      <label>Select Index:</label>
+      <search>
+        <query>| tstats count where index=* OR index=_* by index
+| sort index</query>
+      </search>
+      <fieldForLabel>index</fieldForLabel>
+      <fieldForValue>index</fieldForValue>
+    </input>
+    <input type="dropdown" searchWhenChanged="false" token="select_sourcetype">
+      <label>Select Sourcetype:</label>
+      <choice value="*">All</choice>
+      <search>
+        <query>| tstats count where index=* OR index=_* by index sourcetype 
+| where index="$select_index$" 
+| sort sourcetype</query>
+      </search>
+      <fieldForLabel>sourcetype</fieldForLabel>
+      <fieldForValue>sourcetype</fieldForValue>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <table>
+        <title>Owner Info</title>
+        <search>
+          <query>| inputlookup data_sources.csv where (index=$select_index$ AND sourcetype=$select_sourcetype$) 
+| table description index sourcetype owner_group owner_name owner_email 
+| rename description AS Description index AS Index sourcetype AS Sourcetype owner_group AS "Business Owner" owner_name AS "Owner Name" owner_email AS "Owner Email"</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Associated License(s)</title>
+        <search>
+          <query>| inputlookup license_info.csv where (index=$index_select$ AND sourcetype=$sourcetype_select$) OR (index=$index_select$ AND sourcetype=*) 
+| table owner_group description index sourcetype label quotaMB license_creation license_expire support_expire entitlement 
+| rename description AS Description index AS Index sourcetype AS Sourcetype entitlement AS Entitlement label AS Label license_creation as "License Creation" license_expire AS "License Expiration" owner_group AS "Business Owner" quotaMB AS "Quota MB" support_expire AS "Support Expiration"</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <single>
+        <title>Ingestion Today</title>
+        <search>
+          <query>| inputlookup currentLicenseB.csv where (IndexName="$select_index$" AND SourcetypeName="$select_sourcetype$" AND LicensePool="") 
+| stats last(TOD) AS TOD sum(totalB) AS totalB by IndexName 
+| eval totalMB=(totalB/1024/1024) 
+| table totalMB</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="colorMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="numberPrecision">0.00</option>
+        <option name="rangeColors">["0x65a637","0x6db7c6","0xf7bc38","0xf58f39","0xd93f3c"]</option>
+        <option name="rangeValues">[0,30,70,100]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="trendInterval">auto</option>
+        <option name="unit">MB</option>
+        <option name="useColors">0</option>
+        <option name="useThousandSeparators">1</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <input type="time" searchWhenChanged="true" token="prev_days">
+        <label>Previous Days</label>
+        <default>
+          <earliest>-7d@d</earliest>
+          <latest>@d</latest>
+        </default>
+      </input>
+      <chart>
+        <title>Daily Ingestion</title>
+        <search>
+          <query>index=summary_license_history_detail
+| search (index_name=$select_index$ AND sourcetype_name=$select_sourcetype$) 
+| eval datasource=index_name." [".sourcetype_name."]" 
+| timechart span=1d sum(indexedMB) by datasource limit=10 useother=f 
+| appendcols 
+    [ inputlookup license_info.csv where index=$select_index$ AND sourcetype=$select_sourcetype$ 
+    | table quotaMB] 
+| filldown quotaMB 
+| rename quotaMB AS "Quota (MB)"</query>
+          <earliest>$prev_days.earliest$</earliest>
+          <latest>$prev_days.latest$</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Event Count Distribution by Index/Sourcetype</title>
+        <search>
+          <query>| tstats count WHERE index=$select_index$ sourcetype=$select_sourcetype$ GROUPBY sourcetype, _time span=1d | timechart span=1d sum(count) by sourcetype</query>
+          <earliest>$prev_days.earliest$</earliest>
+          <latest>$prev_days.latest$</latest>
+        </search>
+        <option name="charting.chart">column</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Host Statistics</title>
+        <search>
+          <query>| metadata type=hosts index=$select_index$ sourcetype=$select_sourcetype$ | convert ctime(*Time) | eval totalCount = tostring(totalCount, "commas") | rename firstTime AS "Earliest Event" lastTime AS "Latest Event" totalCount AS "Event Count" | fields host "Earliest Event" "Latest Event" "Event Count" | sort - "Latest Event"</query>
+          <earliest>$prev_days.earliest$</earliest>
+          <latest>$prev_days.latest$</latest>
+        </search>
+        <option name="drilldown">row</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Index Fields</title>
+        <search>
+          <query>index=$select_index$ sourcetype=$select_sourcetype$ | fieldsummary maxvals=1 | rex field=values "value\"\:\"(?&lt;Sample_Value&gt;.+)\"\," | eval index="$select_index$" | eval sourcetype="$select_sourcetype$" | where Sample_Value!="" | fields field Sample_Value index sourcetype | stats list(field) AS "Field Name" list(Sample_Value) AS "Sample Value" by index sourcetype | rename index AS Index sourcetype AS Sourcetype</query>
+          <earliest>-60m@m</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+</form>

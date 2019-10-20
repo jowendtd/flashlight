@@ -1,0 +1,97 @@
+<form>
+  <label>DBConnect Drilldown</label>
+  <search id="dbconnect_base">
+    <query>
+      | rest splunk_server_group=flashlight_heavy_forwarder /services/data/inputs/mi_input 
+| where title="$select_dbinput$"
+    </query>
+    <progress>
+      <condition match=" 'job.resultCount' != 0">
+        <set token="splunk_server">$result.splunk_server$</set>
+        <set token="title">$result.title$</set>
+        <set token="db_index">$result.index$</set>
+        <set token="db_sourcetype">$result.sourcetype$</set>
+        <set token="db_source">$result.source$</set>
+      </condition>
+    </progress>
+  </search>
+  <fieldset submitButton="false">
+    <input type="dropdown" token="select_dbinput" searchWhenChanged="true">
+      <label>DB Input</label>
+      <fieldForLabel>title</fieldForLabel>
+      <fieldForValue>title</fieldForValue>
+      <search>
+        <query>| rest splunk_server_group=flashlight_heavy_forwarder /services/data/inputs/mi_input 
+| stats count by title
+| table title
+| sort title</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <input type="time" token="time_select">
+        <label></label>
+        <default>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </default>
+      </input>
+      <chart>
+        <title>Status</title>
+        <search>
+          <query>index=_internal source=*dbx*.log host=$splunk_server$* dbinput="mi_input://$title$"
+| timechart count by action</query>
+          <earliest>$time_select.earliest$</earliest>
+          <latest>$time_select.latest$</latest>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>DB Event Timeline</title>
+        <search>
+          <query>| tstats count where index=$db_index$ source=$db_source$ sourcetype=$db_sourcetype$ by _time | timechart values(count) AS events</query>
+          <earliest>$time_select.earliest$</earliest>
+          <latest>$time_select.latest$</latest>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">collapsed</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <search base="dbconnect_base">
+          <query>| table query</query>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>DBConnect Input Summary</title>
+        <search base="dbconnect_base">
+          <query>| table title author disabled splunk_server connection host index source sourcetype eai:acl.perms.read eai:acl.perms.write fetch_size interval max_rows input* output_timestamp_format tail*
+| transpose</query>
+        </search>
+        <option name="count">30</option>
+        <option name="drilldown">row</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+</form>

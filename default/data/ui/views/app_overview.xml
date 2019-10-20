@@ -1,0 +1,114 @@
+<form>
+  <label>App Overview</label>
+  <fieldset submitButton="false"></fieldset>
+  <row>
+    <panel>
+      <single>
+        <title>Total Apps</title>
+        <search>
+          <query>| rest splunk_server_group=dmc_group_search_head /services/apps/local 
+| stats dc(title)</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Enabled Apps</title>
+        <search>
+          <query>| rest splunk_server_group=dmc_group_search_head /services/apps/local 
+| where disabled=0 
+| stats dc(title)</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Disabled Apps</title>
+        <search>
+          <query>| rest splunk_server_group=dmc_group_search_head /services/apps/local 
+| where disabled=1 
+| stats dc(title)</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Hidden Apps</title>
+        <search>
+          <query>| rest splunk_server_group=dmc_group_search_head /services/apps/local 
+| where visible=0 
+| stats dc(title)</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>App by Status</title>
+        <search>
+          <query>| rest splunk_server_group=dmc_group_search_head /services/apps/local 
+| fields label, visible, disabled 
+| eval status=case(disabled==1, "disabled", visible==0, "hidden", 1==1, "enabled") 
+| stats count by status</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <input type="dropdown" token="search_head" searchWhenChanged="true">
+        <label>Search Head:</label>
+        <fieldForLabel>host</fieldForLabel>
+        <fieldForValue>host</fieldForValue>
+        <search>
+          <query>| rest splunk_server_group=dmc_group_search_head /services/server/info
+| fields host
+| sort host</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+      </input>
+      <table>
+        <title>Splunk App Info</title>
+        <search>
+          <query>| rest splunk_server=$search_head$* /services/apps/local 
+| fields label, title, details, eai:acl.sharing, eai:acl.perms.read, eai:acl.perms.write, version, visible 
+| rename eai:acl.perms.read AS read, eai:acl.perms.write AS modify eai:acl.sharing AS "sharing context" 
+| eval visible=if(visible==1, "yes", "no") 
+| eval read=mvjoin(read, ", ") 
+| eval modify=mvjoin(modify, ", ") 
+| rex field=read mode=sed "s/\*/All roles/g" 
+| rex field=modify mode=sed "s/\*/All roles/g" 
+| rename read AS "read roles" modify AS "write roles" title AS app 
+| sort label 
+| rename label AS Label app AS "Splunk App" details AS Details "sharing context" AS "Sharing Context" "read roles" AS "Read Roles" "write roles" AS "Write Roles" version AS Version visible AS Visible 
+| sort Label</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+</form>

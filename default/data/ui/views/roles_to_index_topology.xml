@@ -1,0 +1,32 @@
+<dashboard>
+  <label>Roles to Index Topology</label>
+  <row>
+    <panel>
+      <viz type="network_topology.network_topology">
+        <title>Roles to Indexes</title>
+        <search>
+          <query>| rest splunk_server_group=dmc_group_search_head /services/authorization/roles
+| rename title AS role 
+| table role srchIndexesAllowed imported_srchIndexesAllowed imported_roles 
+| mvexpand imported_roles 
+| eval indexes=mvdedup(mvappend(imported_srchIndexesAllowed,srchIndexesAllowed)) 
+| eval role=mvdedup(mvappend(imported_roles,role))
+| eval role2=role 
+| mvexpand role 
+| mvexpand indexes 
+| mvexpand role2 
+| eval indexes2=indexes 
+| eval role2=role 
+| eval idx="index" 
+| eval usr="user" 
+| eval rl="role" 
+| dedup role indexes
+| table role rl indexes idx usr</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </viz>
+    </panel>
+  </row>
+</dashboard>

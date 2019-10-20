@@ -1,0 +1,155 @@
+<form>
+  <label>Data Model Drilldown</label>
+  <search id="datamodel_base">
+    <query>
+    | rest splunk_server_group=dmc_group_search_head /services/admin/summarization by_tstats=t count=0 
+| eval datamodel=replace('summary.id',"DM_".'eai:acl.app'."_","") 
+| join type=left datamodel 
+    [| rest splunk_server_group=dmc_group_search_head /services/data/models count=0 
+    | table title acceleration.cron_schedule eai:digest 
+    | rename title as datamodel 
+    | rename acceleration.cron_schedule AS cron] 
+| table datamodel eai:acl.app summary.access_time summary.is_inprogress summary.size summary.latest_time summary.complete summary.buckets_size summary.buckets cron summary.last_error summary.time_range summary.id summary.mod_time eai:digest summary.earliest_time summary.last_sid summary.access_count splunk_server 
+| search splunk_server=*
+| rename summary.id AS summary_id, summary.time_range AS retention, summary.earliest_time as earliest, summary.latest_time as latest, eai:digest as digest 
+| rename summary.* AS *, eai:acl.* AS * 
+| sort datamodel 
+| rename access_count AS Datamodel_Acceleration.access_count access_time AS Datamodel_Acceleration.access_time app AS Datamodel_Acceleration.app buckets AS Datamodel_Acceleration.buckets buckets_size AS Datamodel_Acceleration.buckets_size cron AS Datamodel_Acceleration.cron complete AS Datamodel_Acceleration.complete datamodel AS Datamodel_Acceleration.datamodel digest AS Datamodel_Acceleration.digest earliest AS Datamodel_Acceleration.earliest is_inprogress AS Datamodel_Acceleration.is_inprogress last_error AS Datamodel_Acceleration.last_error last_sid AS Datamodel_Acceleration.last_sid latest AS Datamodel_Acceleration.latest mod_time AS Datamodel_Acceleration.mod_time retention AS Datamodel_Acceleration.retention size AS Datamodel_Acceleration.size summary_id AS Datamodel_Acceleration.summary_id 
+| rename "Datamodel_Acceleration.*" as * 
+| join type=outer last_sid 
+    [| rest splunk_server_group=dmc_group_search_head count=0 /services/search/jobs reportSearch=summarize* 
+    | rename sid as last_sid 
+    | fields last_sid,runDuration] 
+| stats values(app) AS app values(access_time) AS access_time values(is_inprogress) AS is_inprogress values(size) AS size values(latest) AS latest values(complete) AS complete values(buckets_size) AS buckets_size values(buckets) AS buckets values(cron) AS cron values(last_error) AS last_error values(retention) AS retention values(summary_id) AS summary_id values(mod_time) AS mod_time values(digest) AS digest values(earliest) AS earliest values(last_sid) AS last_sid values(access_count) AS access_count values(runDuration) AS runDuration values(splunk_server) AS splunk_server by datamodel 
+| search datamodel="$select_data_model$"
+| eval "size(MB)"=round(size/1048576,1), "retention(days)"=if(retention==0,"unlimited",round(retention/86400,1)), "complete(%)"=round(complete*100,1), "runDuration(s)"=round(runDuration,1) | sort 100 + datamodel 
+| fieldformat earliest=strftime(earliest, "%m/%d/%Y %H:%M:%S") 
+| fieldformat latest=strftime(latest, "%m/%d/%Y %H:%M:%S") 
+| stats values(*) AS * by datamodel
+    </query>
+  </search>
+  <fieldset submitButton="true" autoRun="false">
+    <input type="dropdown" token="select_data_model">
+      <label>Data Model:</label>
+      <fieldForLabel>title</fieldForLabel>
+      <fieldForValue>title</fieldForValue>
+      <search>
+        <query>| rest splunk_server_group=dmc_group_search_head /services/data/models 
+| stats count by title 
+| fields title 
+| sort title</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <single>
+        <title>Application</title>
+        <search base="datamodel_base">
+          <query>| table app</query>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Cron</title>
+        <search base="datamodel_base">
+          <query>| table cron</query>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Earliest Time</title>
+        <search base="datamodel_base">
+          <query>| table earliest</query>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Latest Time</title>
+        <search base="datamodel_base">
+          <query>| table latest</query>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Complete%</title>
+        <search base="datamodel_base">
+          <query>| table complete(%)</query>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <single>
+        <title>Access Count</title>
+        <search base="datamodel_base">
+          <query>| table access_count</query>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Run Duration</title>
+        <search base="datamodel_base">
+          <query>| table runDuration(s)
+| rename runDuration(s) AS runDuration</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="underLabel">seconds</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Size (MB)</title>
+        <search base="datamodel_base">
+          <query>| table size(MB)</query>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Retention</title>
+        <search base="datamodel_base">
+          <query>| table retention(days)</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="underLabel">Day(s)</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Search Heads</title>
+        <search base="datamodel_base">
+          <query>| table splunk_server</query>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <title>Last Error</title>
+        <search base="datamodel_base">
+          <query>| table last_error</query>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+</form>

@@ -1,0 +1,53 @@
+<dashboard>
+  <label>Capability Overview</label>
+  <row>
+    <panel>
+      <table>
+        <title>Capability List</title>
+        <search>
+          <query>| rest splunk_server=* /services/authorization/capabilities 
+| stats count by capabilities
+| fields capabilities 
+| mvexpand capabilities 
+| rename capabilities AS capability 
+| lookup splunk_capabilities.csv capability_name AS capability 
+| join capability type=outer 
+    [| rest splunk_server=* /services/authentication/users 
+    | fields title, capabilities 
+    | rename title AS username 
+    | mvexpand capabilities 
+    | stats values(username) AS username by capabilities
+    | mvcombine username 
+    | eval user_count=mvcount(username) 
+    | eval username=mvjoin(username, ", ") 
+    | rename username AS users capabilities AS capability] 
+| fillnull value=0 user_count 
+| join capability type=outer 
+    [| rest splunk_server=* /services/authentication/users 
+    | fields roles, capabilities 
+    | mvexpand capabilities 
+    | mvcombine roles 
+    | mvcombine roles 
+    | rex field=roles mode=sed "s/\s/, /g" 
+    | makemv delim=", " roles 
+    | eventstats values(roles) AS roles by capabilities 
+    | eval role_count=mvcount(roles) 
+    | eval roles=mvjoin(roles, ", ") 
+    | rename capabilities AS capability] 
+| fillnull value=0 role_count 
+| fields capability, description, role_count, user_count 
+| rename capability AS Capability description AS Description role_count AS "Roles" user_count AS "Users" 
+| sort Capability</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="count">25</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+</dashboard>

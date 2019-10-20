@@ -1,0 +1,99 @@
+<form>
+  <label>KVStore Overview</label>
+  <fieldset submitButton="false">
+    <input type="dropdown" token="select_role" searchWhenChanged="true">
+      <label>Role:</label>
+      <choice value="*">ALL</choice>
+      <choice value="Search Head">Search Head</choice>
+      <choice value="Indexer">Indexer</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="dropdown" token="select_cluster" searchWhenChanged="true">
+      <label>Cluster:</label>
+      <choice value="*">ALL</choice>
+      <initialValue>*</initialValue>
+      <fieldForLabel>cluster_label</fieldForLabel>
+      <fieldForValue>cluster_label</fieldForValue>
+      <search>
+        <query>| inputlookup server_inventory.csv where primary_role=$select_role$
+| stats count by cluster_label 
+| table cluster_label 
+| sort cluster_label</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <default>*</default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <table>
+        <title>KVStore Status</title>
+        <search>
+          <query>| rest splunk_server_group=flashlight_search_head /services/kvstore/status | append [| rest splunk_server_group=flashlight_indexer /services/kvstore/status] | table current.replicationStatus current.status splunk_server | lookup server_inventory.csv host AS splunk_server OUTPUT primary_role cluster_label | search cluster_label="$select_cluster$" primary_role="$select_role$" | table splunk_server primary_role cluster_label current.replicationStatus current.status</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <input type="time" token="select_error_time">
+        <label></label>
+        <default>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </default>
+      </input>
+      <table>
+        <title>Warnings and Errors</title>
+        <search>
+          <query>index=_internal component=KVStore*
+| cluster showcount=t
+| table cluster_count, _time, log_level, component, message</query>
+          <earliest>$select_error_time.earliest$</earliest>
+          <latest>$select_error_time.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <input type="time" token="select_traffic_time">
+        <label></label>
+        <default>
+          <earliest>-4h@m</earliest>
+          <latest>now</latest>
+        </default>
+      </input>
+      <chart>
+        <title>Network Traffic</title>
+        <search>
+          <query>index=_introspection component=KVStoreServerStats
+| eval source=host
+| bin _time minspan=30s  
+| stats range(data.network.bytesIn) as indiff range(data.network.bytesOut) as outdiff by source _time
+| eval t=abs((indiff+outdiff)/1024/1024)
+| bin _time minspan=30s 
+| stats sum(t) AS Traffic by _time  
+| timechart minspan=30s avg(Traffic) AS "Traffic (MB)"</query>
+          <earliest>$select_traffic_time.earliest$</earliest>
+          <latest>$select_traffic_time.latest$</latest>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+</form>

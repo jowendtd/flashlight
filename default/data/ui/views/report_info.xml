@@ -1,0 +1,57 @@
+<dashboard>
+  <label>Report Info</label>
+  <row>
+    <panel>
+      <html tokens="true">
+        <div id="usage_help">
+          <h4>A <i>report</i> is knowledge object that exists in the form of a saved search or pivot.  Reports can be run manually, or on a regular interval and can be configured to generate alerts. You can accelerate slow-completing reports so that they finish faster, using either report acceleration or data model acceleration. Reports that do not qualify for report acceleration can be accelerated through summary indexing.</h4>
+          	<h1>Saved Reports</h1>
+			<table border="1" cellpadding="5">
+			  <tr>
+  				<th>Search Name</th>
+  				<th>Schedule</th>
+  				<th>Summary Index / Lookup</th>
+          <th>Description</th>
+			  </tr>
+			  <tr>
+  				<td>currentLicenseB</td>
+  				<td>Every 15 Minutes</td>
+  				<td>currentLicenseB.csv</td>
+          <td>Retains the current used License amount (in Bytes) for each sourcetype and index.</td>
+			  </tr>
+			  <tr>
+  				<td>daily_sourcetype_to_index</td>
+  				<td>Daily at 02:00 CST</td>
+  				<td>sourcetype_to_index.csv</td>
+          <td>Lists the indexes and sourcetypes from the previous day.</td>
+			  </tr>
+			  <tr>
+  				<td>source_host_list</td>
+  				<td>Daily at 02:00 CST</td>
+  				<td>source_host_list.csv</td>
+          <td>List of hosts from the previous day.</td>
+			  </tr>
+			  <tr>
+  				<td>yesterday_license_detail_summary</td>
+  				<td>Daily at 01:00 CST</td>
+  				<td>summary_license_history_detail</td>
+          <td>Retains detailed license information about indexes and sourcetypes on a daily basis.</td>
+			  </tr>
+			  <tr>
+  				<td>yesterday_license_usage_summary</td>
+  				<td>Daily at 01:00 CST</td>
+  				<td>summary_license_usage_summary</td>
+          <td>Retains summary license usage by pool on a daily basis.</td>
+			  </tr>
+			  <tr>
+  				<td>yesterday_storage_info_summary</td>
+  				<td>Daily at 01:00 CST</td>
+  				<td>summary_storage_info_detail</td>
+          <td>Retains disk storage information for Indexers on a daily basis.</td>
+			  </tr>
+			</table>
+        </div>
+      </html>
+    </panel>
+  </row>
+</dashboard>

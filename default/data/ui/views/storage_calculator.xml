@@ -1,0 +1,81 @@
+<form>
+  <label>Storage Calculator</label>
+  <search id="baseSearch">
+    <query>| makeresults 
+| eval baseRawSizeGB=($dailyVolumeGB$*$retentionDays$*$compressionFactor$) 
+| eval baseIndexSizeGB=($dailyVolumeGB$*$retentionDays$*$metadataFactor$) 
+| eval baseSizeOnDiskGB=baseRawSizeGB+baseIndexSizeGB 
+| eval repSizeOnDiskGB=($repFactor$*baseRawSizeGB)+($searchFactor$*baseIndexSizeGB) 
+| eval perIndexGB=(repSizeOnDiskGB/$idxNodes$)</query>
+    <earliest>0</earliest>
+    <latest></latest>
+  </search>
+  <fieldset submitButton="false" autoRun="true"></fieldset>
+  <row>
+    <panel>
+      <title>Input Data</title>
+      <input type="text" token="dailyVolumeGB" searchWhenChanged="true">
+        <label>Daily Volume (GB):</label>
+        <default>0</default>
+      </input>
+      <input type="text" token="retentionDays" searchWhenChanged="true">
+        <label>Retention Days:</label>
+        <default>365</default>
+      </input>
+    </panel>
+    <panel>
+      <title>Compression</title>
+      <input type="text" token="compressionFactor" searchWhenChanged="true">
+        <label>Raw Compression Factor:</label>
+        <default>0.15</default>
+      </input>
+      <input type="text" token="metadataFactor" searchWhenChanged="true">
+        <label>Metadata Size Factor:</label>
+        <default>0.35</default>
+      </input>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Architecture</title>
+      <input type="text" token="idxNodes" searchWhenChanged="true">
+        <label>Indexer Nodes:</label>
+        <default>20</default>
+      </input>
+      <input type="text" token="searchFactor" searchWhenChanged="true">
+        <label>Search Factor:</label>
+        <default>2</default>
+      </input>
+      <input type="text" token="repFactor" searchWhenChanged="true">
+        <label>Replication Factor:</label>
+        <default>2</default>
+      </input>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Storage Requirements</title>
+      <single>
+        <title>Size per Indexer</title>
+        <search base="baseSearch">
+          <query>| table perIndexGB</query>
+        </search>
+        <option name="unit">GB</option>
+      </single>
+      <single>
+        <title>Size on Disk</title>
+        <search base="baseSearch">
+          <query>| table baseSizeOnDiskGB</query>
+        </search>
+        <option name="unit">GB</option>
+      </single>
+      <single>
+        <title>Replicated Size on Disk</title>
+        <search base="baseSearch">
+          <query>| table repSizeOnDiskGB</query>
+        </search>
+        <option name="unit">GB</option>
+      </single>
+    </panel>
+  </row>
+</form>

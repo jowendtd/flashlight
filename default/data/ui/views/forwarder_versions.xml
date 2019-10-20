@@ -1,0 +1,134 @@
+<form>
+  <label>Forwarder Versions</label>
+  <fieldset submitButton="true" autoRun="true">
+    <input type="text" token="hostname">
+      <label>Hostname Filter</label>
+      <default>*</default>
+      <prefix>where host=*</prefix>
+      <initialValue>*</initialValue>
+      <suffix>*</suffix>
+    </input>
+    <input type="multiselect" token="operating_system_filter">
+      <label>Operating System Filter</label>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+      <valuePrefix>os_name="</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+      <delimiter> OR </delimiter>
+      <fieldForLabel>os_name</fieldForLabel>
+      <fieldForValue>os_name</fieldForValue>
+      <search>
+        <query>| inputlookup splunk_forwarder_info.csv
+| stats count by os_name
+| fields - count</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <prefix>(</prefix>
+      <suffix>)</suffix>
+    </input>
+    <input type="multiselect" token="version_filter">
+      <label>Version Filter</label>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+      <fieldForLabel>normalized_os_version</fieldForLabel>
+      <fieldForValue>normalized_os_version</fieldForValue>
+      <search>
+        <query>| inputlookup splunk_forwarder_info.csv
+| fields os_name os_release
+| rex field=os_name "(?&lt;normalized_os_name&gt;AIX|HP-UX|Linux|MacOS|SunOS|Windows)"
+| eval normalized_os_name=IF(normalized_os_name=="SunOS", "Solaris", normalized_os_name)
+| rex field=os_name "Microsoft\sWindows\s(Storage\s)*(?&lt;windows_os_version&gt;[\d]|Server\s(\d)+(?:\sR2)*)"
+| eval linux_os_version = IF((normalized_os_name == "Linux" AND match(os_release, "\d{1}\.\d{2}\.\d+\-[\w\d\.\-]+")), "Kernel " . substr(os_release, 0, 4), IF((os_name == "Linux" AND match(os_release, "\d{1}\.\d{1}\.\d+\-[\w\d\.\-]+")), "Kernel " . substr(os_release, 0, 3), NULL))
+| eval aix_os_version = case(like(os_release, "6100-%"), "6.1", like(os_release, "7100-%"), "7.1", like(os_release, "7200-%"), "7.2")
+| eval solaris_os_version = case(os_release == "5.10", 10, os_release == "5.11", 11)
+| eval normalized_os_version = coalesce(windows_os_version, linux_os_version, aix_os_version, solaris_os_version)
+| stats count by normalized_os_version
+| fields - count</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <delimiter> OR </delimiter>
+      <valuePrefix>normalized_os_version = "</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+    </input>
+    <input type="multiselect" token="architecture_filter">
+      <label>Architecture Filter</label>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+      <valuePrefix>normalized_os_arch = "</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+      <delimiter> OR </delimiter>
+      <fieldForLabel>normalized_os_arch</fieldForLabel>
+      <fieldForValue>normalized_os_arch</fieldForValue>
+      <search>
+        <query>| inputlookup splunk_forwarder_info.csv
+| fields host os_name os_release arch sourceIp forwarder_type splunk_version build
+| rex field=os_name "(?&lt;normalized_os_name&gt;AIX|HP-UX|Linux|MacOS|SunOS|Windows)"
+| eval normalized_os_name=IF(normalized_os_name=="SunOS", "Solaris", normalized_os_name)
+| rex field=os_name "Microsoft\sWindows\s(Storage\s)*(?&lt;windows_os_version&gt;[\d]|Server\s(\d)+(?:\sR2)*)"
+| eval windows_os_arch = case(normalized_os_name == "Windows", arch)
+| eval linux_os_arch = case(arch == "x86", "32-bit", arch == "x86_64", "64-bit")
+| eval aix_os_arch = case(normalized_os_name == "AIX", "Itanium")
+| eval solaris_os_arch = case(normalized_os_name == "Solaris" AND arch == "sparc", upper(arch))
+| eval normalized_os_arch = coalesce(windows_os_arch, linux_os_arch, aix_os_arch, solaris_os_arch)
+| join normalized_os_arch [ | inputlookup splunk_uf_compatibility_matrix.csv | rename arch AS normalized_os_arch | fields normalized_os_arch]
+| stats count by normalized_os_arch
+| fields - count</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+    </input>
+    <input type="dropdown" token="forwarder_type_filter">
+      <label>Forwarder Type Filter</label>
+      <choice value="*">All</choice>
+      <choice value="Universal Forwarder">Universal Forwarder</choice>
+      <choice value="Heavy Forwarder">Heavy Forwarder</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+      <search>
+        <query>| makeresults</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <prefix>forwarder_type="</prefix>
+      <suffix>"</suffix>
+      <fieldForLabel>field1</fieldForLabel>
+      <fieldForValue>field1</fieldForValue>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <table>
+        <search>
+          <query>| inputlookup splunk_forwarder_info.csv $hostname$ $operating_system_filter$ AND $forwarder_type_filter$
+| fields host os_name os_release arch sourceIp forwarder_type splunk_version build
+| rex field=os_name "(?&lt;normalized_os_name&gt;AIX|HP-UX|Linux|MacOS|SunOS|Windows)"
+| eval normalized_os_name=IF(normalized_os_name=="SunOS", "Solaris", normalized_os_name)
+| rex field=os_name "Microsoft\sWindows\s(Storage\s)*(?&lt;windows_os_version&gt;[\d]|Server\s(\d)+(?:\sR2)*)"
+| eval windows_os_arch = case(normalized_os_name == "Windows", arch)
+| eval linux_os_version = IF((normalized_os_name == "Linux" AND match(os_release, "\d{1}\.\d{2}\.\d+\-[\w\d\.\-]+")), "Kernel " . substr(os_release, 0, 4), IF((os_name == "Linux" AND match(os_release, "\d{1}\.\d{1}\.\d+\-[\w\d\.\-]+")), "Kernel " . substr(os_release, 0, 3), NULL))
+| eval linux_os_arch = case(arch == "x86", "32-bit", arch == "x86_64", "64-bit")
+| eval aix_os_version = case(like(os_release, "6100-%"), "6.1", like(os_release, "7100-%"), "7.1", like(os_release, "7200-%"), "7.2")
+| eval aix_os_arch = case(normalized_os_name == "AIX", "Itanium")
+| eval solaris_os_version = case(os_release == "5.10", 10, os_release == "5.11", 11)
+| eval solaris_os_arch = case(normalized_os_name == "Solaris" AND arch == "sparc", upper(arch))
+| eval normalized_os_version = coalesce(windows_os_version, linux_os_version, aix_os_version, solaris_os_version)
+| eval normalized_os_arch = coalesce(windows_os_arch, linux_os_arch, aix_os_arch, solaris_os_arch)
+| join normalized_os_name normalized_os_version normalized_os_arch [ | inputlookup splunk_uf_compatibility_matrix.csv | rename os_name AS normalized_os_name os_version AS normalized_os_version arch AS normalized_os_arch | fields normalized_os_name normalized_os_version normalized_os_arch latest_splunk_uf_version]
+| fields host os_name normalized_os_version normalized_os_arch sourceIp forwarder_type splunk_version build latest_splunk_uf_version
+| search $version_filter$ AND $architecture_filter$
+| rename host AS Hostname os_name AS "Operating System" normalized_os_version AS "Version" normalized_os_arch AS "Architecture" sourceIp AS "Source IP" forwarder_type AS "Forwarder Type" splunk_version AS "Current Splunk Version" build AS "Current Splunk Build" latest_splunk_uf_version AS "Latest Compatible Splunk Version"</query>
+          <earliest>-15m</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">100</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+</form>

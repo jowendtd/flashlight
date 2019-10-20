@@ -1,0 +1,188 @@
+<form>
+  <label>Forwarder Drilldown</label>
+  <search id="fwdInfoBase">
+    <query>| inputlookup splunk_forwarder_info.csv where host=$hostname$
+| fields host os_name os_release arch sourceIp forwarder_type splunk_version build
+| rex field=os_name "(?&lt;normalized_os_name&gt;AIX|HP-UX|Linux|MacOS|SunOS|Windows)"
+| eval normalized_os_name=IF(normalized_os_name=="SunOS", "Solaris", normalized_os_name)
+| rex field=os_name "Microsoft\sWindows\s(Storage\s)*(?&lt;windows_os_version&gt;[\d]|Server\s(\d)+(?:\sR2)*)"
+| eval windows_os_arch = case(normalized_os_name == "Windows", arch)
+| eval linux_os_version = IF((normalized_os_name == "Linux" AND match(os_release, "\d{1}\.\d{2}\.\d+\-[\w\d\.\-]+")), "Kernel " . substr(os_release, 0, 4), IF((os_name == "Linux" AND match(os_release, "\d{1}\.\d{1}\.\d+\-[\w\d\.\-]+")), "Kernel " . substr(os_release, 0, 3), NULL))
+| eval linux_os_arch = case(arch == "x86", "32-bit", arch == "x86_64", "64-bit")
+| eval aix_os_version = case(like(os_release, "6100-%"), "6.1", like(os_release, "7100-%"), "7.1", like(os_release, "7200-%"), "7.2")
+| eval aix_os_arch = case(normalized_os_name == "AIX", "Itanium")
+| eval solaris_os_version = case(os_release == "5.10", 10, os_release == "5.11", 11)
+| eval solaris_os_arch = case(normalized_os_name == "Solaris" AND arch == "sparc", upper(arch))
+| eval normalized_os_version = coalesce(windows_os_version, linux_os_version, aix_os_version, solaris_os_version)
+| eval normalized_os_arch = coalesce(windows_os_arch, linux_os_arch, aix_os_arch, solaris_os_arch)
+| join normalized_os_name normalized_os_version normalized_os_arch [ | inputlookup splunk_uf_compatibility_matrix.csv | rename os_name AS normalized_os_name os_version AS normalized_os_version arch AS normalized_os_arch | fields normalized_os_name normalized_os_version normalized_os_arch latest_splunk_uf_version]
+| fields host os_name normalized_os_version normalized_os_arch sourceIp forwarder_type splunk_version build latest_splunk_uf_version
+| rename host AS Hostname os_name AS "Operating System" normalized_os_version AS "Version" normalized_os_arch AS "Architecture" sourceIp AS "Source IP" forwarder_type AS "Forwarder Type" splunk_version AS "Current Splunk Version" build AS "Current Splunk Build" latest_splunk_uf_version AS "Latest Compatible Splunk Version"</query>
+    <earliest>-60m@m</earliest>
+    <latest>now</latest>
+  </search>
+  <fieldset submitButton="false">
+    <input type="text" token="host_filter" searchWhenChanged="false">
+      <label>Filter</label>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="dropdown" token="hostname" searchWhenChanged="true">
+      <label>Hostname</label>
+      <fieldForLabel>host</fieldForLabel>
+      <fieldForValue>host</fieldForValue>
+      <search>
+        <query>| metadata type=hosts index=_internal | fields host | search host=*$host_filter$* | head 50</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <table>
+        <title>Forwarder Info</title>
+        <search base="fwdInfoBase">
+          <query>| fields Hostname "Operating System" "Version" "Architecture" "Source IP"</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Splunk Info</title>
+        <search base="fwdInfoBase">
+          <query>| fields "Forwarder Type" "Current Splunk Version" "Current Splunk Build" "Latest Compatible Splunk Version"</query>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Data Stream Info</title>
+        <search>
+          <query>index=_internal sourcetype=splunkd fwdType=* group=tcpin_connections guid=* hostname=175P8CCTV01 (connectionType=cooked OR connectionType=cookedSSL)
+| eval source_uri=((hostname . ":") . sourcePort), dest_uri=((host . ":") . destPort), connection=((source_uri . "-&gt;") . dest_uri)
+| stats dc(dest_uri) as dest_count, dc(connection) as connection_count, avg(tcp_KBps) as avg_tcp_kbps, avg(tcp_eps) as avg_tcp_eps
+| eval avg_tcp_kbps=round(avg_tcp_kbps,2), avg_tcp_eps=round(avg_tcp_eps,2)
+| rename avg_tcp_eps as "Average Events/s", avg_tcp_kbps as "Average KB/s", connection_count as "Connection Count", dest_count as "Receiver Count"</query>
+          <earliest>-4h@m</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <input type="time" token="data_rate">
+        <label></label>
+        <default>
+          <earliest>-4h@m</earliest>
+          <latest>now</latest>
+        </default>
+      </input>
+      <chart>
+        <title>Outgoing Data Rate</title>
+        <search>
+          <query>index=_internal fwdType=* group=tcpin_connections guid=* hostname=$hostname$ sourcetype=splunkd (connectionType=cooked OR connectionType=cookedSSL)
+| timechart minspan=30s avg(eval(tcp_KBps)) as "KB/s", avg(tcp_eps) as "Events/s"</query>
+          <earliest>$data_rate.earliest$</earliest>
+          <latest>$data_rate.latest$</latest>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisY2.enabled">1</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.overlayFields">Events/s</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <input type="time" token="ds_heartbeat">
+        <label></label>
+        <default>
+          <earliest>-4h@m</earliest>
+          <latest>now</latest>
+        </default>
+      </input>
+      <chart>
+        <title>Deployment Server Heartbeat</title>
+        <search>
+          <query>index=_internal host=$hostname$ component=HttpPubSubConnection message="Running phone uri=*"
+| timechart span=1m count 
+| eval count=IF(count &gt; 1, 1, count)</query>
+          <earliest>$ds_heartbeat.earliest$</earliest>
+          <latest>$ds_heartbeat.latest$</latest>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">collapsed</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <input type="time" token="idx_distribution">
+        <label></label>
+        <default>
+          <earliest>-4h@m</earliest>
+          <latest>now</latest>
+        </default>
+      </input>
+      <chart>
+        <title>Indexer Distribution</title>
+        <search>
+          <query>index=_internal host=$hostname$ component=TcpOutputProc message="Connected to idx*" 
+| timechart count by idx useother=false</query>
+          <earliest>-4h@m</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">collapsed</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <input type="time" token="queue_status">
+        <label></label>
+        <default>
+          <earliest>-15m</earliest>
+          <latest>now</latest>
+        </default>
+      </input>
+      <chart>
+        <title>Queue Status</title>
+        <search>
+          <query>index=_internal component=Metrics group=queue host=$hostname$ current_size_kb&gt;0 
+| timechart max(current_size_kb) by name</query>
+          <earliest>$queue_status.earliest$</earliest>
+          <latest>$queue_status.latest$</latest>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">collapsed</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.nullValueMode">zero</option>
+        <option name="charting.drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+</form>

@@ -1,0 +1,102 @@
+<form>
+  <label>Single-Sign-On</label>
+  <fieldset submitButton="true" autoRun="true">
+    <input type="multiselect" token="search_heads">
+      <label>Select Search Head(s)</label>
+      <search>
+        <query>| rest splunk_server_group=dmc_group_search_head /services/server/info
+| fields host
+| sort host</query>
+      </search>
+      <fieldForLabel>host</fieldForLabel>
+      <fieldForValue>host</fieldForValue>
+      <prefix>(</prefix>
+      <suffix>)</suffix>
+      <valuePrefix>host=</valuePrefix>
+      <delimiter> OR </delimiter>
+    </input>
+    <input type="time" token="select_time">
+      <label></label>
+      <default>
+        <earliest>-4h@m</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <chart>
+        <title>IIS Errors by Status</title>
+        <search>
+          <query>index=iis $search_heads$ 
+| eval http_status = sc_status.".".sc_substatus 
+| timechart span=1h count by http_status</query>
+          <earliest>$select_time.earliest$</earliest>
+          <latest>$select_time.latest$</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Error: 502.3 by User</title>
+        <search>
+          <query>index=iis $search_heads$ cs_username=* 
+| eval http_status = sc_status.".".sc_substatus 
+| search http_status="502.3" 
+| stats count by cs_username 
+| rex field=cs_username "(?&lt;username&gt;((\w+)\\\(\w+)))" 
+| search username="*" 
+| table username count 
+| sort - count 
+| rename username AS Username count AS Count</query>
+          <earliest>$select_time.earliest$</earliest>
+          <latest>$select_time.latest$</latest>
+        </search>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>SSO Failures by User</title>
+        <search>
+          <query>index=iis $search_heads$ sc_status="502" sc_substatus="3" 
+| eval http_status = sc_status.".".sc_substatus 
+| timechart span=1h count by cs_username</query>
+          <earliest>$select_time.earliest$</earliest>
+          <latest>$select_time.latest$</latest>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart">line</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+</form>

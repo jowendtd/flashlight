@@ -1,0 +1,12 @@
+<dashboard>
+  <label>Links</label>
+  <row>
+    <panel>
+      <html tokens="true">
+        <div id="usage_help">
+          <h4>Below are links to Splunk documentation.</h4><br /><br />
+        </div>
+      </html>
+    </panel>
+  </row>
+</dashboard>

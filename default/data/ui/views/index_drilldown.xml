@@ -1,0 +1,170 @@
+<form>
+  <label>Index Drilldown</label>
+  <search id="index_base_search">
+    <query>| rest /services/data/indexes/$select_index$
+            | join title splunk_server type=outer [| rest /services/data/indexes-extended/$select_index$]
+            | eval bucketCount = if(isnotnull(total_bucket_count), total_bucket_count, 0)
+            | eval eventCount = if(isnotnull(totalEventCount), totalEventCount, 0)
+            | eval coldBucketSize = if(isnotnull('bucket_dirs.cold.bucket_size'), 'bucket_dirs.cold.bucket_size', 'bucket_dirs.cold.size')
+            | eval coldBucketSizeGB = if(isnull(coldBucketSize), 0, round(coldBucketSize/ 1024, 2))
+            | eval coldBucketMaxSizeGB = if(isnull('coldPath.maxDataSizeMB') OR 'coldPath.maxDataSizeMB' = 0, "unlimited", round('coldPath.maxDataSizeMB' / 1024, 2))
+            | eval coldBucketUsageGB = coldBucketSizeGB." / ".coldBucketMaxSizeGB
+            | eval homeBucketSizeGB = round((total_size-if(isnull(coldBucketSize), 0, coldBucketSize)) / 1024, 2)
+            | eval homeBucketSizeGB = if(isnull(homeBucketSizeGB), 0, homeBucketSizeGB)
+            | eval homeBucketMaxSizeGB = round('homePath.maxDataSizeMB' / 1024, 2)
+            | eval homeBucketMaxSizeGB = if(isnull(homeBucketMaxSizeGB) OR homeBucketMaxSizeGB == 0, "unlimited", homeBucketMaxSizeGB)
+            | eval homeBucketUsageGB = homeBucketSizeGB." / ".homeBucketMaxSizeGB
+            | eval dataAgeSeconds = now()-strptime(minTime,"%Y-%m-%dT%H:%M:%S%z")
+            | eval dataAgeDays = ceiling(dataAgeSeconds / 86400)
+            | eval frozenTimePeriodDays = round(frozenTimePeriodInSecs / 86400, 0)
+            | eval freezeRatioDays = dataAgeDays." / ".frozenTimePeriodDays
+            | eval indexSizeGB = if(isNum(currentDBSizeMB), round(currentDBSizeMB / 1024, 2), 0)
+            | eval indexMaxSizeGB = if(maxTotalDataSizeMB &gt; 0, round(maxTotalDataSizeMB / 1024, 2), "unlimited")
+            | eval indexSizeUsageGB = indexSizeGB." / ".indexMaxSizeGB
+            | eval indexSizeUsagePerc = if(isNum(indexMaxSizeGB) AND (indexMaxSizeGB &gt; 0), round(indexSizeGB / indexMaxSizeGB * 100, 2)."%", "N/A")</query>
+  </search>
+  <fieldset submitButton="true" autoRun="true">
+    <input type="dropdown" searchWhenChanged="false" token="select_index">
+      <label>Index</label>
+      <fieldForLabel>index</fieldForLabel>
+      <fieldForValue>index</fieldForValue>
+      <search>
+        <query>| inputlookup sourcetype_to_index.csv | table index | stats count by index | table index</query>
+        <earliest>0</earliest>
+        <latest></latest>
+      </search>
+      <default>default</default>
+      <initialValue>default</initialValue>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <single>
+        <search base="index_base_search">
+          <query>stats dc(splunk_server) as instances</query>
+        </search>
+        <option name="underLabel">Indexers</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <search base="index_base_search">
+          <query>| stats sum(currentDBSizeMB) AS DBSizeMB by title | eval DBSizeGB=DBSizeMB/1024 | table DBSizeGB</query>
+        </search>
+        <option name="numberPrecision">0.00</option>
+        <option name="underLabel">Total Index Size</option>
+        <option name="unit">GB</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <search base="index_base_search">
+          <query>search title=$select_index$ | stats sum(eval(total_raw_size / 1024)) as totalRawSizeGB | eval totalRawSizeGB = round(totalRawSizeGB, 2)." GB"</query>
+        </search>
+        <option name="underLabel">Total Raw Data Size (Uncompressed)</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <search base="index_base_search">
+          <query>stats sum(indexSizeGB) as totalIndexSizeGB sum(eval(total_raw_size / 1024)) as totalRawSizeGB | eval compressionRatio = round(totalRawSizeGB / totalIndexSizeGB, 2).":1" | fields compressionRatio</query>
+        </search>
+        <option name="underLabel">Raw to Index Size Ratio*</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Compression</title>
+        <search>
+          <query>| dbinspect index=$select_index$
+| fields state,id,rawSize,sizeOnDiskMB 
+| stats sum(rawSize) AS rawTotal, sum(sizeOnDiskMB) AS diskTotalinMB
+| eval rawTotalinMB=(rawTotal / 1024 / 1024) | fields - rawTotal
+| eval compression=tostring(round(diskTotalinMB / rawTotalinMB * 100, 2)) + "%"
+| eval rawTotalGB = round(rawTotalinMB/1024,2)
+| eval diskTotalGB = round(diskTotalinMB/1024,2)
+| table compression</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <single>
+        <search base="index_base_search">
+          <query>stats sum(eventCount) as totalEventCount | eval totalEventCount = toString(totalEventCount, "commas")</query>
+        </search>
+        <option name="underLabel">Total Events</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <search base="index_base_search">
+          <query>stats min(minTime) as oldestEvent | eval oldestEvent = replace(oldestEvent, "T", " ")</query>
+        </search>
+        <option name="underLabel">Earliest Event</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <search base="index_base_search">
+          <query>stats max(maxTime) as newestEvent | eval newestEvent = replace(newestEvent, "T", " ")</query>
+        </search>
+        <option name="underLabel">Latest Event</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Hosts</title>
+        <search>
+          <query>| metadata type=hosts index=$select_index$ | fields host, totalCount | sort - totalCount | rename host as Host, totalCount as "Event Count"</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <title>Sources</title>
+        <search>
+          <query>| metadata type=sources index=$select_index$ | fields source, totalCount| sort - totalCount | rename source as Source, totalCount as "Event Count"</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <title>Sourcetypes</title>
+        <search>
+          <query>| metadata type=sourcetypes index=$select_index$ | fields sourcetype, totalCount | sort - totalCount | rename sourcetype as Sourcetype, totalCount as "Event Count"</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Instances</title>
+        <search base="index_base_search">
+          <query>eval avgBucketSize = round(indexSizeGB / bucketCount, 2)
+              | fields splunk_server, freezeRatioDays, indexSizeUsageGB, homeBucketUsageGB, coldBucketUsageGB, eventCount, bucketCount, avgBucketSize
+              | rename splunk_server as "Indexer"
+              freezeRatioDays as "Data Age vs Frozen Age (days)"
+              indexSizeUsageGB as "Index Usage (GB)"
+              homeBucketUsageGB as "Home Path Usage (GB)"
+              coldBucketUsageGB as "Cold Path Usage (GB)"
+              eventCount as "Total Event Count"
+              bucketCount as "Total Bucket Count"
+              avgBucketSize as "Average Bucket Size (GB)"</query>
+        </search>
+      </table>
+    </panel>
+  </row>
+</form>

@@ -1,0 +1,102 @@
+<form>
+  <label>DBConnect Health</label>
+  <fieldset submitButton="false">
+    <input type="time" searchWhenChanged="true" token="select_time">
+      <label></label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <chart>
+        <title>Successful Queries</title>
+        <search>
+          <query>index=_internal source=*dbx*.log action=complete_dbinput 
+| rex field=dbinput "mi_input:\/\/(?&lt;dbinput&gt;[\w\W\d]*)"
+| timechart count by dbinput useother=false</query>
+          <earliest>$select_time.earliest$</earliest>
+          <latest>$select_time.latest$</latest>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisY.abbreviation">none</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <link target="_blank">/app/flashlight/dbconnect_drilldown?form.select_dbinput=$click.name2$</link>
+        </drilldown>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Failed Queries</title>
+        <search>
+          <query>index=_internal source=*dbx*.log modular_input=* (action=rpc_server_has_been_abnormally_terminated OR action=loading_input_data_failed OR action=caught_exception_in_modular_input_with_retries OR action=failed_to_run_dbinput OR action=modular_input_exited_after_maximum_failed_retries OR action=dbxquery_command_failure OR action=dbxquery_execute_query_failure OR action=query_service_gets_error)
+| rex field=modular_input "mi_input:\/\/(?&lt;modular_input&gt;[\w\W\d]*)"
+| timechart count by modular_input</query>
+          <earliest>$select_time.earliest$</earliest>
+          <latest>$select_time.latest$</latest>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">collapsed</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <link target="_blank">/app/flashlight/dbconnect_drilldown?form.select_dbinput=$click.name2$</link>
+        </drilldown>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Connection Retry Status</title>
+        <search>
+          <query>index=_internal source=*dbx*.log modular_input=* (action=rpc_server_has_been_abnormally_terminated OR action=loading_input_data_failed OR action=caught_exception_in_modular_input_with_retries OR action=failed_to_run_dbinput OR action=modular_input_exited_after_maximum_failed_retries OR action=dbxquery_command_failure OR action=dbxquery_execute_query_failure OR action=query_service_gets_error)
+| rex field=_raw "Exception: ERROR: (?&lt;exception_msg&gt;[\s\S]*)" 
+| stats latest(_time) AS time latest(retrying) AS retrying latest(exception_msg) AS exception_msg by modular_input host 
+| table time host modular_input retrying exception_msg 
+| rex field=modular_input "mi_input:\/\/(?&lt;modular_input&gt;[\w\W\d]*)"
+| eval time=strftime(time, "%m-%d-%Y %I:%M:%S %p") 
+| eval retrying="Retry ".retrying 
+| rename time AS Time host AS "Splunk Host" modular_input AS "Connection Name" exception_msg AS Error retrying AS "Status"</query>
+          <earliest>$select_time.earliest$</earliest>
+          <latest>$select_time.latest$</latest>
+        </search>
+        <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <link target="_blank">/app/flashlight/dbconnect_drilldown?form.select_dbinput=$row.Connection Name$</link>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>DBConnect Errors</title>
+        <search>
+          <query>index=_internal source=*dbx*.log error=* (action=rpc_server_has_been_abnormally_terminated OR action=loading_input_data_failed OR action=caught_exception_in_modular_input_with_retries OR action=failed_to_run_dbinput OR action=modular_input_exited_after_maximum_failed_retries OR action=dbxquery_command_failure OR action=dbxquery_execute_query_failure OR action=query_service_gets_error) 
+| rex field=_raw "error=(?&lt;error_info&gt;[\s\S]*)"
+| stats count values(host) AS splunk_host by error_info action
+| sort - count
+| table error_info action splunk_host count</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">heatmap</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+</form>

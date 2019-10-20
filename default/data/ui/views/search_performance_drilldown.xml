@@ -1,0 +1,429 @@
+<form>
+  <label>Search Performance Drilldown</label>
+  <search id="scheduler_execution_count_base">
+    <query>index=_internal $search_head$ sourcetype=scheduler (status="completed" OR status="skipped" OR status="deferred" OR status="success" OR status="continued")
+          | eval alert_actions = if(isnull(alert_actions) OR alert_actions == "", "none", alert_actions)
+          | stats count by $scheduler_execution_split_by$</query>
+    <earliest>$timeselect.earliest$</earliest>
+    <latest>$timeselect.latest$</latest>
+  </search>
+  <search base="scheduler_execution_count_base">
+    <query>stats sum(count) as total</query>
+    <preview>
+      <eval token="total_scheduler_execution">if(isnotnull('result.total'), 'result.total', 0)</eval>
+    </preview>
+    <finalized>
+      <eval token="total_scheduler_execution">if(isnotnull('result.total'), 'result.total', 0)</eval>
+    </finalized>
+  </search>
+  <fieldset submitButton="true" autoRun="true">
+    <input type="time" token="timeselect">
+      <label>Time Range</label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="multiselect" token="search_head" searchWhenChanged="false">
+      <label>Search Heads</label>
+      <search>
+        <query>| rest splunk_server_group=dmc_group_search_head /services/server/info
+| fields host
+| sort host</query>
+      </search>
+      <fieldForLabel>host</fieldForLabel>
+      <fieldForValue>host</fieldForValue>
+      <valuePrefix>host=</valuePrefix>
+      <delimiter> OR </delimiter>
+      <prefix>(</prefix>
+      <suffix>)</suffix>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+      <valueSuffix>*</valueSuffix>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <single>
+        <title>Active Users</title>
+        <search>
+          <query>index=_audit $search_head$ action=search info=granted 
+| stats dc(user)</query>
+          <earliest>$timeselect.earliest$</earliest>
+          <latest>$timeselect.latest$</latest>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="colorMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="numberPrecision">0</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="useColors">0</option>
+        <option name="useThousandSeparators">1</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Dashboard Hits</title>
+        <search>
+          <query>index=_internal $search_head$ source=*web_access.log* /app/ 
+| rex "GET /[^/]+/app/(?&lt;app_view&gt;[^/ ?]+/[^/ ?]+) " 
+| search app_view=* 
+| stats count(app_view)</query>
+          <earliest>$timeselect.earliest$</earliest>
+          <latest>$timeselect.latest$</latest>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="colorMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="numberPrecision">0</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="useColors">0</option>
+        <option name="useThousandSeparators">1</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Searches</title>
+        <search>
+          <query>index=_audit $search_head$ action=search (id=* OR search_id=*) 
+| eval search_id = if(isnull(search_id), id, search_id) 
+| replace '*' with * in search_id 
+| rex "search='(?&lt;search&gt;.*?)', autojoin" 
+| search search_id!=scheduler_* 
+| convert num(total_run_time) 
+| eval user = if(user="n/a", null(), user) 
+| stats min(_time) as _time first(user) as user max(total_run_time) as total_run_time first(search) as search by search_id 
+| search search=search* search!=*_internal* search!=*_audit* 
+| chart median(total_run_time) as "Median search time" perc95(total_run_time) as "95th Percentile search time" sum(total_run_time) as "Total search time" count as "Search count" max(_time) as "Last use" by user 
+| fieldformat "Last use" = strftime('Last use', "%F %T.%Q %:z") 
+| stats sum(Search count)</query>
+          <earliest>$timeselect.earliest$</earliest>
+          <latest>$timeselect.latest$</latest>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="colorMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="numberPrecision">0</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="useColors">0</option>
+        <option name="useThousandSeparators">1</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Scheduled Searches</title>
+        <search>
+          <query>index=_audit $search_head$ action=search (id=* OR search_id=*) 
+| eval search_id = if(isnull(search_id), id, search_id) 
+| replace '*' with * in search_id 
+| rex "search='(?&lt;search&gt;.*?)', autojoin" 
+| search search_id=scheduler_* 
+| convert num(total_run_time) 
+| eval user = if(user="n/a", null(), user) 
+| stats min(_time) as _time first(user) as user max(total_run_time) as total_run_time first(search) as search by search_id 
+| search search=search* search!=*_internal* search!=*_audit* 
+| chart median(total_run_time) as "Median search time" perc95(total_run_time) as "95th Percentile search time" sum(total_run_time) as "Total search time" count as "Search count" max(_time) as "Last use" by user 
+| fieldformat "Last use" = strftime('Last use', "%F %T.%Q %:z") 
+| stats sum(Search count)</query>
+          <earliest>$timeselect.earliest$</earliest>
+          <latest>$timeselect.latest$</latest>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="colorMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="numberPrecision">0</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="useColors">0</option>
+        <option name="useThousandSeparators">1</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Search Jobs</title>
+        <search>
+          <query>index=_internal sourcetype="scheduler" $search_head$ 
+| timechart span=30m count(status) by host useother=false</query>
+          <earliest>$timeselect.earliest$</earliest>
+          <latest>$timeselect.latest$</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Count of Scheduler Executions</title>
+      <!-- here we use a pattern:
+       - base search: get counts grouped by metrics
+       - post-process-1: get total count, generate a token to store total
+       - post-process-2: use the $total$ token to calculate percent
+       -->
+      <input type="dropdown" token="scheduler_execution_split_by" searchWhenChanged="true">
+        <label>Group by</label>
+        <showClearButton>false</showClearButton>
+        <choice value="status">Status</choice>
+        <choice value="app">App</choice>
+        <choice value="user">User</choice>
+        <choice value="savedsearch_name">Report Name</choice>
+        <choice value="alert_actions">Alert Actions</choice>
+        <default>status</default>
+      </input>
+      <table>
+        <title>Total: $total_scheduler_execution$</title>
+        <search base="scheduler_execution_count_base">
+          <query>sort - count 
+| eventstats sum(count) AS total 
+| eval percent = round(count / total * 100, 2)." %" 
+| fields - total 
+| rename status as Status, app as App, user as User, savedsearch_name as "Report Name", alert_actions as "Alert Actions", count as Count, percent as "Percent of Total"</query>
+        </search>
+        <option name="dataOverlayMode">heatmap</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+    <panel rejects="$hide_activity$">
+      <title>Count of Scheduler Executions Over Time</title>
+      <input type="dropdown" token="scheduler_execution_timechart_split_by" searchWhenChanged="true">
+        <label>Group by</label>
+        <showClearButton>false</showClearButton>
+        <choice value="status">Status</choice>
+        <choice value="app">App</choice>
+        <choice value="user">User</choice>
+        <choice value="savedsearch_name">Report Name</choice>
+        <choice value="alert_actions">Alert Actions</choice>
+        <default>status</default>
+      </input>
+      <chart>
+        <search>
+          <query>index=_internal $search_head$ sourcetype=scheduler (status="completed" OR status="skipped" OR status="deferred" OR status="success" OR status="continued") 
+| eval alert_actions = if(isnull(alert_actions) OR alert_actions == "", "none", alert_actions) 
+| timechart partial=f count by $scheduler_execution_timechart_split_by$</query>
+          <earliest>$timeselect.earliest$</earliest>
+          <latest>$timeselect.latest$</latest>
+        </search>
+        <option name="charting.axisLabelsY.majorUnit">1</option>
+        <option name="charting.axisTitleX.text">Time</option>
+        <option name="charting.axisTitleY.text">Count</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.fieldColors">{"completed": 0xa2cc3e, "deferred": 0xf2b827, "skipped":0xd6563c}</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Knowledge Bundle Transmission</title>
+      <chart>
+        <title>Bundle Size and Time</title>
+        <search>
+          <query>index=_internal $search_head$ component=DistributedBundleReplicationManager replication_reason=* 
+| eval bundleSizeKB=substr(bundle_size,1,(LEN(bundle_size)-2)) 
+| stats avg(bundleSizeKB) AS avgBundleSizeKB avg(elapsed_ms) AS avgElapsedMS by host 
+| eval avgBundleSizeKB=round(avgBundleSizeKB,2) 
+| eval avgElapsedMS=round(avgElapsedMS,2) 
+| rename avgBundleSizeKB AS "Avg Bundle Size (KB)" avgElapsedMS AS "Avg Time (ms)"</query>
+          <earliest>$timeselect.earliest$</earliest>
+          <latest>$timeselect.latest$</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.overlayFields">"Avg Time (ms)"</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <table>
+        <title>Bundle Transmit Failure</title>
+        <search>
+          <query>index=_internal $search_head$ component=DistributedPeerManager "Unable to distribute to peer" 
+| rex field=message "Unable to distribute to peer named (?&lt;peer_name&gt;[\w\d.:]*) " 
+| table _time host peer_name _raw 
+| sort host 
+| stats count by host peer_name 
+| rename host AS "Search Head" peer_name AS "Search Peer" count AS "Tx Failures" 
+| sort - "Tx Failures"</query>
+          <earliest>$timeselect.earliest$</earliest>
+          <latest>$timeselect.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+        <drilldown>
+          <link target="_blank">/app/xom_data-and-analytics/server_drilldown?form.splunk_server=$click.value2$</link>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Top Searchers</title>
+        <search>
+          <query>index=_internal sourcetype="scheduler" status=success $search_head$ 
+| top user by host 
+| sort - count 
+| rename host AS "Search Head" user AS User count AS "# of Searches" percent AS "% of SH Searches"</query>
+          <earliest>$timeselect.earliest$</earliest>
+          <latest>$timeselect.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+        <format type="number" field="% of SH Searches"></format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Expensive Searches</title>
+        <search>
+          <query>index=_audit $search_head$ action=search (id=* OR search_id=*) 
+| eval search_id=if(isnull(search_id), id, search_id) 
+| replace '*' with * in search_id 
+| search search_id!=rt_* search_id!=searchparsetmp* 
+| eval search1=search 
+| rex "search='(?&lt;search&gt;.*?)', autojoin" 
+| rex "savedsearch_name=\"(?&lt;savedsearch_name&gt;.*?)\"\]\[" 
+| eval search=case(savedsearch_name!="","Scheduled search name : ".savedsearch_name,isnotnull(search),search,isnull(search) AND savedsearch_name=="","SID : ".search_id) 
+| convert num(total_run_time) 
+| eval user = if(user="n/a", "nobody", user) 
+| stats min(_time) as _time last(user) as user max(total_run_time) as total_run_time last(search) as search by search_id, host 
+| search search_id=* search!=typeahead* search!="| history*" search!=*_internal* search!=*_audit* 
+| fields - search_id 
+| sort - total_run_time 
+| head 10 
+| rename host AS "Search Head" _time AS "Time" user AS User total_run_time AS "Total Run Time" search AS Search</query>
+          <earliest>$timeselect.earliest$</earliest>
+          <latest>$timeselect.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">heatmap</option>
+        <option name="drilldown">row</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Skipped Searches</title>
+        <search>
+          <query>index=_internal $search_head$ source=*scheduler.log app="*" savedsearch_name="*" | stats min(run_time) as "Min Runtime (Sec)", median(run_time) as median_Runtime, max(run_time) as max_Runtime, count(eval(status!="continued")) AS total_exec, count(eval(status=="success")) as "Successful Executions", count(eval(status=="skipped")) AS "Skipped Executions" by app, savedsearch_name, user host | stats first(*) as * by savedsearch_name | eval interval_usage_ratio=round((median_Runtime/schedule_period),2) | search total_exec&gt;0 | rename app AS App median_Runtime AS "Median Runtime (Sec)" max_Runtime AS "Max Runtime (Sec)" savedsearch_name AS "Scheduled Search Name" user AS User total_exec AS "Total Executions" | table host App "Scheduled Search Name" User "Min Runtime (Sec)" "Median Runtime (Sec)" "Max Runtime (Sec)" "Total Executions" "Successful Executions" "Skipped Executions" | sort - "Median Runtime (Sec)" "Total Executions" | search "Skipped Executions" &gt; 0 | sort - "Skipped Executions" | rename host AS "Search Head"</query>
+          <earliest>$timeselect.earliest$</earliest>
+          <latest>$timeselect.latest$</latest>
+        </search>
+        <option name="wrap">true</option>
+        <option name="rowNumbers">false</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="count">10</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>User Activity</title>
+        <search>
+          <query>index=_audit $search_head$ action=search (id=* OR search_id=*) 
+| eval search_id = if(isnull(search_id), id, search_id) 
+| replace '*' with * in search_id 
+| rex "search='(?&lt;search&gt;.*?)', autojoin" 
+| search search_id!=scheduler_* 
+| convert num(total_run_time) 
+| rex "\,\s+user=(?&lt;user&gt;\S+)," 
+| eval user = if(user="n/a", null(), user) 
+| stats min(_time) as _time first(user) as User max(total_run_time) as total_run_time first(search) as search by search_id host 
+| search search=search* search!=*_internal* search!=*_audit* 
+| stats median(total_run_time) as "Median Search Time (Sec)" perc95(total_run_time) as "95th % Search Time (Sec)" sum(total_run_time) as "Total Search Time (Sec)" count as "Search Count" max(_time) as "Last Use" by User host 
+| fieldformat "Last Use" = strftime('Last Use', "%F %T.%Q %:z") 
+| rename host AS "Search Head" 
+| sort - "Median Search Time (Sec)"</query>
+          <earliest>$timeselect.earliest$</earliest>
+          <latest>$timeselect.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+</form>

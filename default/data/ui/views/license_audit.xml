@@ -1,0 +1,183 @@
+<form>
+  <label>License Audit</label>
+  <fieldset submitButton="true" autoRun="true">
+    <input type="dropdown" token="license_pool" searchWhenChanged="false">
+      <label>License:</label>
+      <choice value="*">All</choice>
+      <search>
+        <query>| rest splunk_server_group=dmc_group_license_master /services/licenser/pools 
+| table title</query>
+      </search>
+      <fieldForLabel>title</fieldForLabel>
+      <fieldForValue>title</fieldForValue>
+      <default>auto_generated_pool_enterprise</default>
+      <initialValue>auto_generated_pool_enterprise</initialValue>
+    </input>
+    <input type="dropdown" token="select_index">
+      <label>Select Index:</label>
+      <search>
+        <query>| tstats count where index=* OR index=_* by index
+| sort index</query>
+      </search>
+      <fieldForLabel>index</fieldForLabel>
+      <fieldForValue>index</fieldForValue>
+      <default>_internal</default>
+      <initialValue>_internal</initialValue>
+    </input>
+    <input type="dropdown" token="select_sourcetype">
+      <label>Select Sourcetype:</label>
+      <search>
+        <query>| tstats count where index=* OR index=_* by index sourcetype
+| where index="$select_index$"
+| sort sourcetype</query>
+      </search>
+      <fieldForLabel>sourcetype</fieldForLabel>
+      <fieldForValue>sourcetype</fieldForValue>
+      <choice value="*">All</choice>
+      <initialValue>*</initialValue>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <table>
+        <title>License Breakdown</title>
+        <search>
+          <query>| inputlookup license_info.csv WHERE (index=* AND sourcetype=*) | table index sourcetype owner_group description quotaMB | rename index AS Index sourcetype AS Sourcetype owner_group AS "Owner [Group]" description AS Description quotaMB AS "Quota (MB)"</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="wrap">true</option>
+        <option name="rowNumbers">false</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="count">10</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <single>
+        <title>Ingestion Today</title>
+        <search>
+          <query>| inputlookup currentLicenseB.csv where (IndexName="$select_index$" AND SourcetypeName="$select_sourcetype$" AND LicensePool=$license_pool$) | stats last(TOD) AS TOD sum(totalB) AS totalB by IndexName | eval totalMB=(totalB/1024/1024) | table totalMB</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="colorMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="numberPrecision">0.00</option>
+        <option name="rangeColors">["0x65a637","0x6db7c6","0xf7bc38","0xf58f39","0xd93f3c"]</option>
+        <option name="rangeValues">[0,30,70,100]</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="trendInterval">auto</option>
+        <option name="unit">MB</option>
+        <option name="useColors">0</option>
+        <option name="useThousandSeparators">1</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Average Daily Volume</title>
+        <search>
+          <query>index=summary_license_history_detail pool=$license_pool$ | search (index_name=$select_index$ AND sourcetype_name=$select_sourcetype$) | eval datasource=index_name." [".sourcetype_name."]" | timechart span=1d sum(indexedMB) AS totalIndexedMB | stats avg(totalIndexedMB) AS avgIndexedMB</query>
+          <earliest>-30d@d</earliest>
+          <latest>@d</latest>
+        </search>
+        <option name="unit">MB</option>
+        <option name="useThousandSeparators">1</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Avg License Used</title>
+        <search>
+          <query>index=summary_license_history_detail pool=$license_pool$ | search (index_name=$select_index$ AND sourcetype_name=$select_sourcetype$) | eval datasource=index_name." [".sourcetype_name."]" | timechart span=1d sum(indexedMB) AS totalIndexedMB | stats avg(totalIndexedMB) AS avgIndexedMB | appendcols [ inputlookup license_info.csv where index=$select_index$ AND sourcetype=$select_sourcetype$  | table quotaMB] | eval quotaMB=if(quotaMB&gt;15360, quotaMB, 15360) | eval avgIndexedPercent=(avgIndexedMB/quotaMB)*100
+ | table avgIndexedPercent</query>
+          <earliest>-30d@d</earliest>
+          <latest>@d</latest>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="colorMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="numberPrecision">0.00</option>
+        <option name="rangeColors">["0x65a637","0xf7bc38","0xf58f39","0xd93f3c"]</option>
+        <option name="rangeValues">[35,50,75]</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="trendInterval">auto</option>
+        <option name="unit">%</option>
+        <option name="useColors">1</option>
+        <option name="useThousandSeparators">1</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Ingestion Over Time (MB)</title>
+        <search>
+          <query>index=summary_license_history_detail pool=$license_pool$ | search (index_name=$select_index$ AND sourcetype_name=$select_sourcetype$) | eval datasource=index_name." [".sourcetype_name."]" | timechart span=1d sum(indexedMB) by datasource limit=10 useother=f | appendcols [ inputlookup license_info.csv where index=$select_index$ AND sourcetype=$select_sourcetype$ | table quotaMB] | filldown quotaMB | eval quotaMB=if(quotaMB&gt;15360, quotaMB, 15360) | rename quotaMB AS "Quota (MB)"</query>
+          <earliest>-30d@d</earliest>
+          <latest>@d</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">collapsed</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="charting.chart.overlayFields">quotaMB</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Yesterday Ingestion by Host</title>
+        <search>
+          <query>| tstats summariesonly=false sum(License_Usage_Events.b) AS bytes from datamodel="Log_LicenseUsage" GROUPBY License_Usage_Events.pool License_Usage_Events.idx License_Usage_Events.st License_Usage_Events.h | search License_Usage_Events.pool="$license_pool$" License_Usage_Events.idx="$select_index$" AND License_Usage_Events.st="$select_sourcetype$" AND License_Usage_Events.h!=""| eval TotalMB=bytes/1024/1024 | table License_Usage_Events.pool License_Usage_Events.idx License_Usage_Events.st License_Usage_Events.h TotalMB | rename License_Usage_Events.pool AS Pool License_Usage_Events.idx AS Index License_Usage_Events.st AS "Source Type" License_Usage_Events.h AS Host | fields - Pool | sort 0 - TotalMB</query>
+          <earliest>-1d@d</earliest>
+          <latest>@d</latest>
+        </search>
+        <option name="percentagesRow">false</option>
+        <option name="totalsRow">false</option>
+        <format type="number" field="TotalMB">
+          <option name="unit">MB</option>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Note</title>
+      <html>
+      Every indexer periodically reports to license manager stats of the data indexed: broken down by source, source type, host, and index. If the number of distinct (source, source type, host, index) tuples grows over the squash_threshold, Splunk squashes the {host, source} values and only reports a breakdown by {sourcetype, index}. This is to prevent explosions in memory and license_usage.log lines.<br/>
+        <br/>
+Because of squashing on the other fields, only the split-by source type and index will guarantee full reporting (every byte). Split by source and host do not guarantee full reporting necessarily, if those two fields represent many distinct values. Splunk reports the entire quantity indexed, but not the names. So you lose granularity (that is, you don't know who consumed that amount), but you still know what the amount consumed is.
+    </html>
+    </panel>
+  </row>
+</form>

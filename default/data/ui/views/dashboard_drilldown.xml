@@ -1,0 +1,100 @@
+<form>
+  <label>Dashboard Drilldown</label>
+  <search id="dashboard_base">
+    <query>| rest splunk_server_group=flashlight_search_head /servicesNS/-/-/saved/searches 
+| where title="$select_title$"
+| fields title author description dispatch.earliest_time dispatch.latest_time eai:acl* id is_scheduled is_visible next_scheduled_time search splunk_server updated action*</query>
+    <earliest>-24h@h</earliest>
+    <latest>now</latest>
+  </search>
+  <fieldset submitButton="false">
+    <input type="dropdown" token="select_title">
+      <label>Reports:</label>
+      <fieldForLabel>title</fieldForLabel>
+      <fieldForValue>title</fieldForValue>
+      <search>
+        <query>| rest splunk_server_group=dmc_group_search_head /servicesNS/-/-/saved/searches 
+| stats count by title 
+| table title 
+| sort title</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <table>
+        <title>Report Summary</title>
+        <search base="dashboard_base">
+          <query>| eval is_visible=if(is_visible=="0","False","True")
+| eval is_scheduled=if(is_scheduled=="0","False","True")
+| rex field=id "servicesNS\/(?&lt;location&gt;.*)"
+| stats values(title) AS "Title" values(author) AS Author values(description) AS Description values(is_visible) AS "Visible" values(location) AS Location values(dispatch.earliest_time) AS "Earliest Time" values(dispatch.latest_time) AS "Latest Time" values(is_scheduled) AS "Scheduled" values(next_scheduled_time) AS "Next Run Time" values(updated) AS "Last Updated" 
+| transpose include_empty=false 
+| rename column AS "Title" "row 1" AS Description</query>
+          <done>
+            <set token="app_name">$row.Title$</set>
+          </done>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <input type="dropdown" token="select_action">
+        <label>Action</label>
+        <fieldForLabel>actions</fieldForLabel>
+        <fieldForValue>actions</fieldForValue>
+        <search>
+          <query>| rest splunk_server_group=dmc_group_search_head /servicesNS/-/-/saved/searches 
+| where title="$select_title$" 
+| fields actions 
+| stats count by actions 
+| table actions 
+| sort actions</query>
+        </search>
+      </input>
+      <table>
+        <title>Action Summary</title>
+        <search base="dashboard_base">
+          <query>| search actions=$select_action$
+| head 1
+| table action.$select_action$*
+| streamstats count as temp_id
+| stats values(*) AS * by temp_id
+| fields - temp_id</query>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Search</title>
+        <search base="dashboard_base">
+          <query>| table search 
+| dedup search
+| rename search AS Search</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <search base="dashboard_base">
+          <query>| stats values(splunk_server) AS "Splunk Server(s)"</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+</form>

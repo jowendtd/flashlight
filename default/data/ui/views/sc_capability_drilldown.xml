@@ -1,0 +1,195 @@
+<form>
+  <label>Capability Drilldown</label>
+  <fieldset submitButton="true" autoRun="true">
+    <input type="dropdown" searchWhenChanged="false" token="capability_select">
+      <label>Select Capability:</label>
+      <search>
+        <query>| rest /services/authorization/capabilities | fields capabilities | mvexpand capabilities | rename capabilities AS capability | sort capability | dedup capability</query>
+      </search>
+      <fieldForLabel>capability</fieldForLabel>
+      <fieldForValue>capability</fieldForValue>
+      <default>accelerate_datamodel</default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <single>
+        <title>Users w/ Capability: $capability_select$</title>
+        <search>
+          <query>| rest splunk_server=* /services/authorization/capabilities 
+| fields capabilities 
+| mvexpand capabilities 
+| stats count by capabilities 
+| rename capabilities AS capability 
+| lookup splunk_capabilities.csv capability_name AS capability 
+| join capability type=outer 
+    [| rest splunk_server=* /services/authentication/users 
+    | fields title, capabilities 
+    | rename title AS username 
+    | mvexpand capabilities 
+    | stats count by username capabilities 
+    | mvcombine username 
+    | eval user_count=mvcount(username) 
+    | eval username=mvjoin(username, ", ") 
+    | rename username AS users capabilities AS capability] 
+| fillnull value=0 user_count 
+| join capability type=outer 
+    [| rest splunk_server=* /services/authentication/users 
+    | fields roles, capabilities 
+    | mvexpand capabilities 
+    | mvcombine roles 
+    | mvcombine roles 
+    | rex field=roles mode=sed "s/\s/, /g" 
+    | makemv delim=", " roles 
+    | eventstats values(roles) AS roles by capabilities 
+    | eval role_count=mvcount(roles) 
+    | eval roles=mvjoin(roles, ", ") 
+    | rename capabilities AS capability] 
+| fillnull value=0 role_count 
+| where capability="$capability_select$" 
+| fields user_count</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Roles w/ Capability: $capability_select$</title>
+        <search>
+          <query>| rest splunk_server=* /services/authorization/capabilities 
+| fields capabilities 
+| mvexpand capabilities 
+| stats count by capabilities 
+| rename capabilities AS capability 
+| lookup splunk_capabilities.csv capability_name AS capability 
+| join capability type=outer 
+    [| rest splunk_server=* /services/authentication/users 
+    | fields title, capabilities 
+    | rename title AS username 
+    | mvexpand capabilities 
+    | stats count by username capabilities 
+    | mvcombine username 
+    | eval user_count=mvcount(username) 
+    | eval username=mvjoin(username, ", ") 
+    | rename username AS users capabilities AS capability] 
+| fillnull value=0 user_count 
+| join capability type=outer 
+    [| rest splunk_server=* /services/authentication/users 
+    | fields roles, capabilities 
+    | mvexpand capabilities 
+    | mvcombine roles 
+    | mvcombine roles 
+    | rex field=roles mode=sed "s/\s/, /g" 
+    | makemv delim=", " roles 
+    | eventstats values(roles) AS roles by capabilities 
+    | eval role_count=mvcount(roles) 
+    | eval roles=mvjoin(roles, ", ") 
+    | rename capabilities AS capability] 
+| fillnull value=0 role_count 
+| where capability="$capability_select$" 
+| fields role_count</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Capability Description</title>
+        <search>
+          <query>| rest /services/authorization/capabilities | fields capabilities | mvexpand capabilities | rename capabilities AS capability | dedup capability | lookup splunk_capabilities.csv capability_name AS capability | WHERE capability="$capability_select$" |  fields capability, description | rename capability AS Capability description AS Description</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Users w/ Capability</title>
+        <search>
+          <query>| rest splunk_server=* /services/authorization/capabilities 
+| fields capabilities 
+| mvexpand capabilities 
+| stats count by capabilities
+| rename capabilities AS capability 
+| lookup splunk_capabilities.csv capability_name AS capability 
+| join capability type=outer 
+    [| rest splunk_server=* /services/authentication/users 
+    | fields title, capabilities 
+    | rename title AS username 
+    | mvexpand capabilities 
+    | stats count by username capabilities
+    | mvcombine username 
+    | eval user_count=mvcount(username) 
+    | eval username=mvjoin(username, ", ") 
+    | rename username AS users capabilities AS capability] 
+| fillnull value=0 user_count 
+| join capability type=outer 
+    [| rest splunk_server=* /services/authentication/users 
+    | fields roles, capabilities 
+    | mvexpand capabilities 
+    | mvcombine roles 
+    | mvcombine roles 
+    | rex field=roles mode=sed "s/\s/, /g" 
+    | makemv delim=", " roles 
+    | eventstats values(roles) AS roles by capabilities 
+    | eval role_count=mvcount(roles) 
+    | eval roles=mvjoin(roles, ", ") 
+    | rename capabilities AS capability] 
+| fillnull value=0 role_count
+| where capability="$capability_select$" 
+| fields users 
+| makemv delim=", " users 
+| mvexpand users 
+| rename users AS User</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <title>Users w/ Capability</title>
+        <search>
+          <query>| rest splunk_server=* /services/authorization/roles 
+| rename title AS role 
+| fields splunk_server, role, capabilities, imported_capabilities, imported_roles 
+| eval all_capabilities=mvappend(capabilities, "", imported_capabilities) 
+| mvexpand all_capabilities 
+| where all_capabilities="$capability_select$" 
+| eval imported=if(isnotnull(mvfind(imported_capabilities, "^$capability_select$$")), "YES", "NO") 
+| fields + splunk_server, role, imported 
+| rename splunk_server AS "Splunk Server" role AS Role imported AS Imported</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+</form>

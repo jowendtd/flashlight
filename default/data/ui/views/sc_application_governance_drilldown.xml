@@ -1,0 +1,89 @@
+<form>
+  <label>Application Governance Drilldown</label>
+  <fieldset submitButton="true">
+    <input type="radio" token="visible" searchWhenChanged="true">
+      <label>Visible Only</label>
+      <choice value="1">Yes</choice>
+      <choice value="0">No</choice>
+      <default>1</default>
+      <initialValue>1</initialValue>
+    </input>
+    <input type="dropdown" token="application" searchWhenChanged="false">
+      <label>Application</label>
+      <fieldForLabel>label</fieldForLabel>
+      <fieldForValue>label</fieldForValue>
+      <search>
+        <query>| rest splunk_server_group=dmc_group_search_head /services/apps/local 
+| where visible=$visible$ 
+| stats count by label 
+| table label 
+| sort label</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <single>
+        <title>Splunk Application</title>
+        <search>
+          <query>| rest splunk_server_group=dmc_group_search_head /services/apps/local 
+| search label="$application$" 
+| stats count by label</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Application Folder</title>
+        <search>
+          <query>| rest splunk_server_group=dmc_group_search_head /services/apps/local 
+| search label="$application$" 
+| stats count by title</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <input type="dropdown" token="splunk_server" searchWhenChanged="true">
+        <label>Search Head</label>
+        <choice value="*">All</choice>
+        <initialValue>*</initialValue>
+        <fieldForLabel>host</fieldForLabel>
+        <fieldForValue>host</fieldForValue>
+        <search>
+          <query>| rest splunk_server_group=dmc_group_search_head /services/server/info
+| table host
+| sort host</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <default>*</default>
+      </input>
+      <table>
+        <title>Search Heads</title>
+        <search>
+          <query>| rest splunk_server_group=dmc_group_search_head /services/apps/local 
+| search label="$application$" splunk_server="$splunk_server$" 
+| stats values(eai:acl.perms.read) AS "Read" values(eai:acl.perms.write) AS Write values(eai:acl.sharing) AS Sharing by splunk_server 
+| sort splunk_server 
+| rename splunk_server AS "Search Head"</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+</form>

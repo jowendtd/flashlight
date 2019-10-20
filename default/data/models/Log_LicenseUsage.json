@@ -1,0 +1,222 @@
+{
+    "modelName": "Log_LicenseUsage",
+    "displayName": "Log - License Usage",
+    "description": "",
+    "objectSummary": {
+        "Event-Based": 1,
+        "Transaction-Based": 0,
+        "Search-Based": 0
+    },
+    "objects": [
+        {
+            "objectName": "License_Usage_Events",
+            "displayName": "License Usage Events",
+            "parentName": "BaseEvent",
+            "fields": [
+                {
+                    "fieldName": "b",
+                    "owner": "License_Usage_Events",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "b",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "ev",
+                    "owner": "License_Usage_Events",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "ev",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "group",
+                    "owner": "License_Usage_Events",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "group",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "h",
+                    "owner": "License_Usage_Events",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "h",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "i",
+                    "owner": "License_Usage_Events",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "i",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "idx",
+                    "owner": "License_Usage_Events",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "idx",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "kb",
+                    "owner": "License_Usage_Events",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "kb",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "pool",
+                    "owner": "License_Usage_Events",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "pool",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "series",
+                    "owner": "License_Usage_Events",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "series",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "splunk_server",
+                    "owner": "License_Usage_Events",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "splunk_server",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "st",
+                    "owner": "License_Usage_Events",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "st",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "type",
+                    "owner": "License_Usage_Events",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "type",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "_time",
+                    "owner": "BaseEvent",
+                    "type": "timestamp",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "_time",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "host",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "host",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "source",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "source",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "sourcetype",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "sourcetype",
+                    "comment": ""
+                }
+            ],
+            "calculations": [],
+            "constraints": [
+                {
+                    "search": "index=_internal source=*license_usage.log* type=Usage",
+                    "owner": "License_Usage_Events"
+                }
+            ],
+            "lineage": "License_Usage_Events"
+        }
+    ],
+    "objectNameList": [
+        "License_Usage_Events"
+    ]
+}

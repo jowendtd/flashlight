@@ -1,0 +1,41 @@
+<form>
+  <label>Data Source Contacts</label>
+  <fieldset autoRun="true" submitButton="false">
+    <input type="dropdown" searchWhenChanged="true" token="select_index">
+      <label>Select Index:</label>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <prefix>"</prefix>
+      <suffix>"</suffix>
+      <fieldForLabel>index</fieldForLabel>
+      <fieldForValue>index</fieldForValue>
+      <search>
+        <query>| tstats count where index=* OR index=_* by index
+| sort index</query>
+        <earliest>0</earliest>
+        <latest></latest>
+      </search>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <table>
+        <title>Contact Information</title>
+        <search>
+          <query>| inputlookup data_sources.csv WHERE index=$select_index$ 
+| stats values(owner_group) AS "Contact Group" values(owner_name) AS "Contact Name" values(owner_email) AS "Contact Email" values(sourcetype) AS "Sourcetypes" values(description) AS "Description" by index 
+| rename index AS Index 
+| table "Index" "Sourcetypes" "Description" "Contact Group" "Contact Name" "Contact Email"</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+</form>

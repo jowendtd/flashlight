@@ -1,0 +1,45 @@
+<form>
+  <label>Forwarder Throughput</label>
+  <fieldset submitButton="true">
+    <input type="text" token="host">
+      <label>Host:</label>
+      <default>*</default>
+    </input>
+    <input type="time" token="time">
+      <label>Time Range:</label>
+      <default>
+        <earliest>-4h@m</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <table>
+        <title>Throughput</title>
+        <search>
+          <query>index=_internal group=* max_age=* host=$host$ | stats avg(kbps) as "Avg kbps" sparkline(avg(kbps)) as "Avg kbps Sparkline" max(kbps) as "Max kbps" sparkline(max(kbps)) as "Max kbps Sparkline" avg(ev) as "Avg Events" sparkline(avg(ev)) as "Avg Events Sparkline" avg(avg_age) as "Avg Age" sparkline(avg(avg_age)) as "Avg Age Sparkline" max(max_age) as "Max Age" sparkline(max(max_age)) as "Max Age Sparkline" by host | rename host AS Host</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="count">50</option>
+        <option name="refresh.display">preview</option>
+        <format type="number" field="Max">
+          <option name="unit">kbps</option>
+        </format>
+        <format type="number" field="Avg kbps">
+          <option name="precision">3</option>
+        </format>
+        <format type="number" field="Max kbps">
+          <option name="precision">3</option>
+        </format>
+        <format type="number" field="Avg Events">
+          <option name="precision">3</option>
+        </format>
+        <format type="number" field="Avg Age">
+          <option name="precision">3</option>
+        </format>
+      </table>
+    </panel>
+  </row>
+</form>

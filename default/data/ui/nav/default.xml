@@ -1,0 +1,159 @@
+<nav search_view="search" color="#a6192e">
+
+	<view name="overview" default="true" />
+	
+  <collection label="License Info">
+    <view name="license_overview" />
+    <view name="license_pool_drilldown" />
+    <view name="license_audit" />
+  </collection>
+  
+  <collection label="Apps">
+    <view name="app_overview" />
+    <view name="app_utilization" />
+  </collection>
+  
+  <collection label="Artifacts">
+    <view name="report_inventory" />
+    <view name="dashboard_audit" />
+    <view name="dashboard_drilldown" />
+  </collection>
+  
+  <collection label="Splunk Components">
+    
+    <collection label="Search Heads" >
+      <collection label="Authentication" >
+        <view name="authentication_overview" />
+        <view name="singlesignon" />
+      </collection>
+      
+      <view name="search_performance_overview" />
+      <view name="search_performance_drilldown" />
+      
+      <collection label="Data Models" >
+      	<view name="data_model_overview" />
+        <view name="data_model_drilldown" />
+   	  </collection>
+      
+    	<view name="orphaned_searches" />
+    </collection>
+    
+    <collection label="Indexers" >
+      
+      <collection label="Search Peers">
+      	<view name="search_peer_overview" />
+      	<view name="search_peer_drilldown" />
+      </collection>
+      
+      <collection label="Cluster">
+        <view name="indexer_cluster_status" />
+      </collection>
+        
+      
+      <collection label="Indexes">
+      	<view name="indexers_and_indexes" />
+      	<view name="index_drilldown" />
+      	<view name="index_usage_matrix" />
+      </collection>
+      
+    </collection>
+    
+    <collection label="Deployment Servers" >
+      <view name="deployment_client_overview" />
+      <view name="deployment_server_overview" />
+    </collection>
+    
+    <collection label="Forwarders" >
+      <view name="forwarder_drilldown" />
+      <view name="forwarder_versions" />
+      <view name="forwarder_throttling" />
+      <view name="forwarder_throughput" />
+      <view name="forwarder_output_queue" />
+    </collection>
+    
+    <collection label="KVStore" >
+      <view name="kvstore_overview" />
+    </collection>
+    
+    <collection label="DBConnect">
+      <view name="dbconnect_health" />
+      <view name="dbconnect_drilldown" />
+    </collection> 
+      
+    <collection label="Other" >
+      <view name="hec_tokens" />
+    </collection>
+    
+  </collection>
+  
+  <collection label="Data Sources">
+    
+    <collection label="Pipeline Issues">
+      <view name="data_pipeline_latency" />
+      <view name="date_parsing_issues" />
+      <view name="indextime_configs" />
+      <view name="line_merging_issues" />
+      <view name="truncation_issues" />
+    </collection>
+    
+    <view name="data_source_contacts" />
+    <view name="data_source_health" />
+    <view name="data_source_drilldown" />
+  </collection>
+  
+  <collection label="Infrastructure">
+	<view name="splunk_infrastructure_status" />
+    <view name="server_drilldown" />
+  	<view name="splunk_errors" />
+    <view name="service_account_status" />
+   	<view name="storage_capacity" />
+    <view name="index_retention_and_sizing" />
+  </collection>
+  
+  <collection label="S &amp; C">
+    <view name="sc_overview" />
+    <view name="sc_data_gov" />
+    
+    <collection label="Applications">
+      <view name="sc_application_governance" />
+      <view name="sc_application_governance_drilldown" />
+    </collection>
+      
+   	<collection label="Users">
+      <view name="user_overview" />
+      <view name="user_profile" />
+    </collection>
+    
+    <collection label="Roles">
+      <view name="role_overview" />
+      <view name="role_drilldown" />
+      <view name="roles_to_index_topology" />
+    </collection>
+    
+    <collection label="Capabilities">
+      <view name="sc_capability_overview" />
+      <view name="sc_capability_drilldown" />
+    </collection>
+    
+  </collection>
+  
+  <collection label="Tools">
+    <view name="internal_log_analyzer" />
+    <view name="search_job_detail" />
+    <view name="crash_investigator" />
+    <view name="storage_calculator" />
+  </collection>
+  
+  <collection label="Help">
+    <view name="report_info" />
+    <view name="lookup_info" />
+    <view name="help_summary_indexes" />
+    <view name="help_links" />
+  </collection>
+  
+  <collection label="">
+    <view name="search" />
+	<view name="dashboards" />
+  </collection>
+
+</nav>

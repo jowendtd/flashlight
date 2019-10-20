@@ -1,0 +1,502 @@
+<form>
+  <label>Server Drilldown</label>
+  <fieldset submitButton="false">
+    <input type="dropdown" searchWhenChanged="true" token="splunk_server">
+      <label>Splunk Server</label>
+      <search>
+        <query>| rest splunk_server=* /services/server/info
+| fields host
+| sort host</query>
+        <earliest>0</earliest>
+        <latest></latest>
+      </search>
+      <fieldForLabel>host</fieldForLabel>
+      <fieldForValue>host</fieldForValue>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <table>
+        <title>Server Information</title>
+        <search>
+          <query>| rest splunk_server=$splunk_server$ /services/server/info 
+| fields serverName, numberOfCores, physicalMemoryMB, os_name, cpu_arch 
+| rename serverName AS host 
+| join type=left 
+    [ inputlookup server_inventory.csv] 
+| fields host, numberOfCores, physicalMemoryMB, os_name, cpu_arch, ip_address 
+| rename host AS "Splunk Server", numberOfCores AS "Number of Cores", physicalMemoryMB AS "Physical Memory Capacity (MB)", cpu_arch AS "CPU Architecture", os_name AS "Operating System", ip_address AS "IP Address"</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Splunk Enterprise Instance</title>
+        <search>
+          <query>| inputlookup server_inventory.csv where host=$splunk_server$ 
+| fields host primary_role secondary_role 
+| join type=left host 
+    [| rest splunk_server=local /services/search/distributed/peers 
+    | rex field=title "(?=[a-zA-Z])(?P&lt;hostname&gt;[^ ]+?)\." 
+    | rename title AS peerURI hostname AS host 
+    | table host peerURI] 
+| join type=left host 
+    [| rest splunk_server=$splunk_server$ /services/server/info 
+    | table splunk_server version 
+    | rename splunk_server AS host] 
+| rename host AS "Splunk Server" primary_role AS "Primary Role" secondary_role AS "Secondary Role" peerURI AS "Peer URI" version AS Version</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>CPU Usage</title>
+        <search>
+          <query>| rest splunk_server=$splunk_server$ /services/server/status/resource-usage/hostwide 
+| stats first(cpu_system_pct) as system, first(cpu_user_pct) as user by splunk_server</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>Physical Memory Usage (MB)</title>
+        <search>
+          <query>| rest splunk_server=$splunk_server$ /services/server/status/resource-usage/hostwide 
+| eval perc_80=mem*0.8 
+| eval perc_90=mem*0.9 
+| eval mem_used=round(mem_used, 0) 
+| gauge mem_used 0 perc_80 perc_90, mem</query>
+          <earliest>-15m</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">fillerGauge</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Disk Usage</title>
+        <search>
+          <query>| rest splunk_server=$splunk_server$ /services/server/status/partitions-space 
+| eval free = if(isnotnull(available), available, free) 
+| eval usage = round((capacity-free) / 1024, 2) 
+| eval capacity = round(capacity / 1024, 2) 
+| eval compare_usage = usage." / ".capacity 
+| eval pct_usage = round(usage / capacity * 100, 2) 
+| stats first(fs_type) as fs_type first(compare_usage) as compare_usage first(pct_usage) as pct_usage by mount_point 
+| rename mount_point as "Mount Point", fs_type as "File System Type", compare_usage as "Disk Usage (GB)", capacity as "Capacity (GB)", pct_usage as "Disk Usage (%)"</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Historical Charts</title>
+      <input type="time" searchWhenChanged="true" token="time">
+        <label>Time Range:</label>
+        <default>
+          <earliestTime>-4h@m</earliestTime>
+          <latestTime>now</latestTime>
+        </default>
+      </input>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Splunk Daemon Starts</title>
+        <search>
+          <query>index="_internal" "Splunkd starting" sourcetype="splunkd" host=$splunk_server$ 
+| table _time</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>$funcCPULabel$ CPU Usage</title>
+      <input type="dropdown" searchWhenChanged="true" token="funcCPU">
+        <label>Aggregation</label>
+        <showClearButton>false</showClearButton>
+        <choice value="First">Sampled</choice>
+        <choice value="Median">Median</choice>
+        <choice value="Max">Maximum</choice>
+        <choice value="Min">Minimum</choice>
+        <choice value="Perc90">90th Percentile</choice>
+        <default>Median</default>
+        <change>
+          <condition value="Median">
+            <set token="funcCPULabel">Median</set>
+          </condition>
+          <condition value="Perc90">
+            <set token="funcCPULabel">90th Percentile</set>
+          </condition>
+          <condition value="Avg">
+            <set token="funcCPULabel">Average</set>
+          </condition>
+          <condition value="Max">
+            <set token="funcCPULabel">Maximum</set>
+          </condition>
+          <condition value="Min">
+            <set token="funcCPULabel">Minimum</set>
+          </condition>
+          <condition value="First">
+            <set token="funcCPULabel">Sampled</set>
+          </condition>
+        </change>
+      </input>
+      <chart>
+        <search>
+          <query>index=_introspection host=$splunk_server$ sourcetype=splunk_resource_usage component=Hostwide 
+| timechart $funcCPU$(data.cpu_system_pct) AS "system" $funcCPU$(data.cpu_user_pct) AS "user"</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.text">Time</option>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.text">CPU Usage (%)</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.maximumNumber">100</option>
+        <option name="charting.axisY.minimumNumber">0</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>$funcMemLabel$ Physical Memory Usage</title>
+      <input type="dropdown" searchWhenChanged="true" token="funcMem">
+        <label>Aggregation</label>
+        <showClearButton>false</showClearButton>
+        <choice value="First">Sampled</choice>
+        <choice value="Median">Median</choice>
+        <choice value="Max">Maximum</choice>
+        <choice value="Min">Minimum</choice>
+        <choice value="Perc90">90th Percentile</choice>
+        <default>Median</default>
+        <change>
+          <condition value="Median">
+            <set token="funcMemLabel">Median</set>
+          </condition>
+          <condition value="Perc90">
+            <set token="funcMemLabel">90th Percentile</set>
+          </condition>
+          <condition value="Avg">
+            <set token="funcMemLabel">Average</set>
+          </condition>
+          <condition value="Max">
+            <set token="funcMemLabel">Maximum</set>
+          </condition>
+          <condition value="Min">
+            <set token="funcMemLabel">Minimum</set>
+          </condition>
+          <condition value="First">
+            <set token="funcMemLabel">Sampled</set>
+          </condition>
+        </change>
+      </input>
+      <chart>
+        <search>
+          <query>index=_introspection host=$splunk_server$ sourcetype=splunk_resource_usage component=Hostwide 
+| timechart latest(data.mem) AS "capacity" $funcMem$(data.mem_used) AS "usage"</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.text">Time</option>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.text">Memory Usage (MB)</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.overlayFields">capacity</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="charting.lineDashStyle">shortDash</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Avg % CPU Utilization by Process</title>
+        <search>
+          <query>| tstats max(Introspection.data.pct_cpu) AS pct_cpu FROM datamodel=Log_Introspection WHERE nodename=Introspection.PerProcess_Resource_Usage host=$splunk_server$ GROUPBY _time Introspection.data.process 
+| rename Introspection.data.process AS process 
+| timechart avg(pct_cpu) by process</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>Avg % Memory Utilization by Process</title>
+        <search>
+          <query>| tstats max(Introspection.data.pct_memory) AS pct_memory FROM datamodel=Log_Introspection WHERE nodename=Introspection.PerProcess_Resource_Usage host=$splunk_server$ GROUPBY _time Introspection.data.process 
+| rename Introspection.data.process AS process 
+| timechart avg(pct_memory) by process</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>$funcDiskLabel$ Disk Space</title>
+      <input type="dropdown" searchWhenChanged="true" token="mount_point">
+        <label>Mount Point</label>
+        <showClearButton>false</showClearButton>
+        <selectFirstChoice>true</selectFirstChoice>
+        <search>
+          <query>| rest splunk_server=$splunk_server$ /services/server/status/partitions-space
+          | stats count by mount_point</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <fieldForLabel>mount_point</fieldForLabel>
+        <fieldForValue>mount_point</fieldForValue>
+      </input>
+      <input type="dropdown" searchWhenChanged="true" token="funcDisk">
+        <label>Aggregation</label>
+        <showClearButton>false</showClearButton>
+        <choice value="First">Sampled</choice>
+        <choice value="Median">Median</choice>
+        <choice value="Max">Maximum</choice>
+        <choice value="Min">Minimum</choice>
+        <choice value="Perc90">90th Percentile</choice>
+        <default>Median</default>
+        <change>
+          <condition value="Median">
+            <set token="funcDiskLabel">Median</set>
+          </condition>
+          <condition value="Perc90">
+            <set token="funcDiskLabel">90th Percentile</set>
+          </condition>
+          <condition value="Avg">
+            <set token="funcDiskLabel">Average</set>
+          </condition>
+          <condition value="Max">
+            <set token="funcDiskLabel">Maximum</set>
+          </condition>
+          <condition value="Min">
+            <set token="funcDiskLabel">Minimum</set>
+          </condition>
+          <condition value="First">
+            <set token="funcDiskLabel">Sampled</set>
+          </condition>
+        </change>
+      </input>
+      <chart>
+        <search>
+          <query>index=_introspection host=$splunk_server$ sourcetype=splunk_disk_objects component=Partitions data.mount_point=$mount_point|s$ 
+| eval free = if(isnotnull('data.available'), 'data.available', 'data.free') 
+| eval usage = round(('data.capacity'-free) / 1024, 2) 
+| eval capacity = round('data.capacity' / 1024, 2) 
+| timechart latest(capacity) as capacity $funcDisk$(usage) as usage</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.text">Time</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.text">GB</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.minimumNumber">0</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">connect</option>
+        <option name="charting.chart.overlayFields">capacity</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="charting.lineDashStyle">shortDash</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+</form>

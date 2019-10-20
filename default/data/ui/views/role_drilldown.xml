@@ -1,0 +1,76 @@
+<form>
+  <label>Role Drilldown</label>
+  <fieldset submitButton="false">
+    <input type="dropdown" token="select_role" searchWhenChanged="true">
+      <label>Role:</label>
+      <fieldForLabel>role</fieldForLabel>
+      <fieldForValue>role</fieldForValue>
+      <search>
+        <query>| rest /services/admin/roles splunk_server_group=dmc_group_search_head 
+| rename title AS role 
+| stats count by role 
+| sort role 
+| table role</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <prefix>"</prefix>
+      <suffix>"</suffix>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <table>
+        <title>Role Info</title>
+        <search>
+          <query>| rest splunk_server_group=dmc_group_search_head /services/admin/roles 
+| where title=$select_role$ 
+| rename title AS role 
+| table role, imported_roles, capabilities, imported_capabilities, srchIndexesAllowed, imported_srchIndexesAllowed, srchFilter, imported_srchFilter, srchDiskQuota, imported_srchDiskQuota, splunk_server 
+| eval srchIndexesAllowedAsStr=mvjoin(srchIndexesAllowed,",") 
+| eval srchIndexesAllowedAsStr = if(isnull(srchIndexesAllowedAsStr), ",", srchIndexesAllowedAsStr) 
+| eval imported_srchIndexesAllowedAsStr=mvjoin(imported_srchIndexesAllowed,",") 
+| eval imported_srchIndexesAllowedAsStr = if(isnull(imported_srchIndexesAllowedAsStr), ",", imported_srchIndexesAllowedAsStr) 
+| eval all_searchable_indexes = srchIndexesAllowedAsStr + "," + imported_srchIndexesAllowedAsStr 
+| makemv delim="," all_searchable_indexes 
+| eval all_searchable_indexes = mvsort(mvdedup(all_searchable_indexes)) 
+| eval capabilitiesAsStr=mvjoin(capabilities,",") 
+| eval capabilitiesAsStr = if(isnull(capabilitiesAsStr), ",", capabilitiesAsStr) 
+| eval imported_capabilitiesAsStr=mvjoin(imported_capabilities,",") 
+| eval imported_capabilitiesAsStr = if(isnull(imported_capabilitiesAsStr), ",", imported_capabilitiesAsStr) 
+| eval all_capabilities = capabilitiesAsStr + "," + imported_capabilitiesAsStr 
+| makemv delim="," all_capabilities 
+| eval all_capabilities = mvsort(mvdedup(all_capabilities)) 
+| stats values(role) AS Role, values(imported_roles) AS "Imported Roles", values(all_capabilities) AS "Capabilities", values(all_searchable_indexes) AS "Searchable Indexes", values(splunk_server) AS "Splunk Server(s)"</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <title>Inherited Role Info</title>
+        <search>
+          <query>| rest splunk_server_group=dmc_group_search_head /services/authorization/roles
+| where title=$select_role$
+| rename title AS role 
+| mvexpand imported_roles 
+| table imported_roles role 
+| map search="| rest splunk_server_group=dmc_group_search_head /services/authorization/roles | rename title AS role|search role=$$imported_roles$$|table role imported_roles capabilities imported_capabilities srchIndexesAllowed imported_srchIndexesAllowed" 
+| eval indexes=mvdedup(mvappend(imported_srchIndexesAllowed,srchIndexesAllowed)) 
+| rename imported_srchIndexesAllowed AS imported_indexes 
+| eval capabilities=mvdedup(mvappend(capabilities,imported_capabilities)) 
+| stats values(imported_srchIndexesAllowed) AS imported_indexes values(indexes) AS indexes values(imported_roles) AS imported_roles values(capabilities) AS capabilities values(imported_capabilities) AS imported_capabilities by role 
+| table role imported_roles indexes imported_indexes capabilities imported_capabilities</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+</form>

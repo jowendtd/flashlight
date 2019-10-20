@@ -1,0 +1,18 @@
+<dashboard>
+  <label>Unmanaged Forwarders</label>
+  <row>
+    <panel>
+      <table>
+        <title>Unmanaged Forwarders</title>
+        <search>
+          <query>| inputlookup unmanaged_forwarders.csv | fields Hostname,"Last Event",OS,Version,"Tx KBps","Tx EPS",index,source,sourcetype</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="count">25</option>
+        <format type="number" field="Tx KBps"></format>
+        <format type="number" field="Tx EPS"></format>
+      </table>
+    </panel>
+  </row>
+</dashboard>

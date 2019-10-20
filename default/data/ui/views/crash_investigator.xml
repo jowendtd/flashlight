@@ -1,0 +1,42 @@
+<dashboard>
+  <label>Crash Investigator</label>
+  <row>
+    <panel>
+      <html>
+        <div>Ideally, Splunk should never crash. If you see crash logs listed here, it is encouraged to open support ticket reporting findings and attaching a Splunk Diag.<br/>
+        <code>splunk diag --upload --case-number=$case_number$ --upload-user=$user$ --upload-password=$password$ --upload-description=$description$</code>
+          <br/>
+        For more information on generating a Splunk Diag: <a href="https://docs.splunk.com/Documentation/Splunk/latest/Troubleshooting/Generateadiag">https://docs.splunk.com/Documentation/Splunk/latest/Troubleshooting/Generateadiag</a>
+        </div>
+      </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <event>
+        <title>Crash Logs (Last 30 Days)</title>
+        <search>
+          <query>index=_internal sourcetype=splunkd_crash_log 
+| rex "^\[build\s+(?&lt;splunk_build&gt;\d+)" 
+| rex "Cause:\s+(?&lt;crash_cause&gt;[^\n\r]+)" 
+| rex "Crashing\sthread:\s+(?&lt;crash_thread&gt;\S+)" 
+| search crash_thread=* 
+| table _time, host, splunk_build, crash_thread, crash_cause</query>
+          <earliest>-30d@d</earliest>
+          <latest>now</latest>
+        </search>
+        <fields>["host","source","sourcetype"]</fields>
+        <option name="count">10</option>
+        <option name="list.drilldown">full</option>
+        <option name="list.wrap">1</option>
+        <option name="maxLines">5</option>
+        <option name="raw.drilldown">full</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">0</option>
+        <option name="table.drilldown">all</option>
+        <option name="table.wrap">1</option>
+        <option name="type">list</option>
+      </event>
+    </panel>
+  </row>
+</dashboard>

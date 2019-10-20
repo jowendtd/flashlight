@@ -1,0 +1,98 @@
+<form>
+  <label>Storage Capacity</label>
+  <fieldset autoRun="true" submitButton="true">
+    <input type="text" searchWhenChanged="false" token="predict_days">
+      <label>Future Predicted Days</label>
+      <default>90</default>
+    </input>
+    <input type="dropdown" token="idx_cluster">
+      <label>Indexer Cluster</label>
+      <choice value="*">All</choice>
+      <fieldForLabel>cluster_label</fieldForLabel>
+      <fieldForValue>cluster_label</fieldForValue>
+      <search>
+        <query>| rest splunk_server_group=dmc_group_indexer /services/server/info
+| stats count by cluster_label
+| sort cluster_label</query>
+      </search>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <chart>
+        <title>Storage Usage (TB)</title>
+        <search>
+          <query>index=summary_storage_history 
+    [| rest splunk_server_group=dmc_group_indexer /services/server/info 
+    | search cluster_label="$idx_cluster$" 
+    | table host] 
+| eval diskUsageTB=(diskUsageMB/1024/1024) 
+| eval diskTotalTB=(diskTotalMB/1024/1024) 
+| stats sum(diskUsageTB) AS diskUsageTB sum(diskTotalTB) AS diskTotalGB by _time 
+| timechart first(diskUsageTB) AS diskUsageTB first(diskTotalGB) AS diskTotalGB 
+| predict diskUsageTB as diskUsageTB_predicted future_timespan=$predict_days$ 
+| filldown diskTotalGB</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">connect</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Current Indexer Storage (TB)</title>
+        <search>
+          <query>index=summary_storage_history 
+    [| rest splunk_server_group=dmc_group_indexer /services/server/info 
+    | search cluster_label="$idx_cluster$" 
+    | table host] 
+| eval percUsed=round((diskUsageMB/diskTotalMB)*100,2) 
+| eval diskUsageTB=round(diskUsageMB/1024/1024,3) 
+| eval diskTotalTB=round(diskTotalMB/1024/1024,3) 
+| table splunk_host mount_point diskUsageTB diskTotalTB percUsed 
+| sort splunk_host</query>
+          <earliest>-1d@d</earliest>
+          <latest>@d</latest>
+        </search>
+        <option name="count">100</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="percUsed">
+          <colorPalette type="minMidMax" maxColor="#D6563C" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="number" field="percUsed">
+          <option name="unit">%</option>
+        </format>
+      </table>
+    </panel>
+  </row>
+</form>

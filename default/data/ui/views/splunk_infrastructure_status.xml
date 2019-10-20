@@ -1,0 +1,148 @@
+<form>
+  <label>Splunk Infrastructure Status</label>
+  <description></description>
+  <fieldset submitButton="false" autoRun="true"></fieldset>
+  <row>
+    <panel>
+      <map>
+        <title>Splunk Hosts by Location</title>
+        <search>
+          <query>| inputlookup server_inventory.csv 
+| lookup geo_info.csv id AS geolocation OUTPUT geo_latitude geo_longitude 
+| table host geo_latitude geo_longitude 
+| eval latlong=geo_latitude.":".geo_longitude
+| geostats latfield=geo_latitude longfield=geo_longitude count by latlong globallimit=0</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">all</option>
+        <option name="mapping.choroplethLayer.colorBins">5</option>
+        <option name="mapping.choroplethLayer.colorMode">auto</option>
+        <option name="mapping.choroplethLayer.maximumColor">0xDB5800</option>
+        <option name="mapping.choroplethLayer.minimumColor">0x2F25BA</option>
+        <option name="mapping.choroplethLayer.neutralPoint">0</option>
+        <option name="mapping.choroplethLayer.shapeOpacity">0.75</option>
+        <option name="mapping.choroplethLayer.showBorder">1</option>
+        <option name="mapping.data.maxClusters">100</option>
+        <option name="mapping.map.center">(16.97,-18.98)</option>
+        <option name="mapping.map.panning">1</option>
+        <option name="mapping.map.scrollZoom">0</option>
+        <option name="mapping.map.zoom">2</option>
+        <option name="mapping.markerLayer.markerMaxSize">50</option>
+        <option name="mapping.markerLayer.markerMinSize">10</option>
+        <option name="mapping.markerLayer.markerOpacity">0.8</option>
+        <option name="mapping.showTiles">1</option>
+        <option name="mapping.tileLayer.maxZoom">7</option>
+        <option name="mapping.tileLayer.minZoom">0</option>
+        <option name="mapping.tileLayer.tileOpacity">1</option>
+        <option name="mapping.type">marker</option>
+        <option name="refresh.display">progressbar</option>
+      </map>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <input type="dropdown" token="select_role" searchWhenChanged="true">
+        <label>Role</label>
+        <choice value="*">All</choice>
+        <default>*</default>
+        <fieldForLabel>Role</fieldForLabel>
+        <fieldForValue>Role</fieldForValue>
+        <search>
+          <query>| inputlookup server_inventory.csv | rename primary_role AS Role | table Role | append [| inputlookup server_inventory.csv | rename secondary_role AS Role | table Role ] | dedup Role | sort Role</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <prefix>"</prefix>
+        <suffix>"</suffix>
+      </input>
+      <input type="dropdown" token="select_geolocation" searchWhenChanged="true">
+        <label>Geolocation</label>
+        <choice value="*">All</choice>
+        <valuePrefix>"</valuePrefix>
+        <valueSuffix>"</valueSuffix>
+        <delimiter> OR </delimiter>
+        <fieldForLabel>geolocation</fieldForLabel>
+        <fieldForValue>geolocation</fieldForValue>
+        <search>
+          <query>| inputlookup server_inventory.csv | table geolocation | dedup geolocation</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <default>*</default>
+      </input>
+      <input type="dropdown" token="select_os" searchWhenChanged="true">
+        <label>Operating System</label>
+        <choice value="*">All</choice>
+        <default>*</default>
+        <fieldForLabel>operating_system</fieldForLabel>
+        <fieldForValue>operating_system</fieldForValue>
+        <search>
+          <query>| inputlookup server_inventory.csv | table operating_system | dedup operating_system | sort operating_system</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <prefix>"</prefix>
+        <suffix>"</suffix>
+      </input>
+      <input type="dropdown" token="select_version" searchWhenChanged="true">
+        <label>Splunk Version</label>
+        <choice value="*">All</choice>
+        <default>*</default>
+        <fieldForLabel>version</fieldForLabel>
+        <fieldForValue>version</fieldForValue>
+        <search>
+          <query>| rest splunk_server=* /services/server/info 
+| stats count by version 
+| sort version</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <prefix>"</prefix>
+        <suffix>"</suffix>
+      </input>
+      <table id="df">
+        <title>Server Inventory</title>
+        <search>
+          <query>| tstats max(Introspection.Disk_Objects.Capacity) AS Capacity max(Introspection.Disk_Objects.Avail) AS Avail max(Introspection.Disk_Objects.Used) AS Used max(Introspection.Disk_Objects.UsedPct) AS UsedPct FROM datamodel=Log_Introspection WHERE nodename=Introspection.Disk_Objects 
+    [ inputlookup server_inventory.csv 
+    | search (primary_role="*" OR secondary_role="*") AND (geolocation=*) AND (operating_system="*") 
+    | eval host=host."*" 
+    | fields host] GROUPBY _time host Introspection.data.mount_point 
+| rex field=host "(?&lt;host&gt;\w+)\." 
+| eventstats max(_time) AS latest by host 
+| where _time=latest 
+| lookup server_inventory.csv host OUTPUT primary_role secondary_role geolocation operating_system ip_address 
+| lookup geo_info.csv id AS geolocation OUTPUT city country
+| eval geolocation = city . ", " . country
+| rename Introspection.data.mount_point AS Mount host AS Hostname primary_role AS "Primary Role" secondary_role AS "Secondary Role" geolocation AS "Geolocation" operating_system AS "Operating System" ip_address AS "IP Address" Capacity AS "Capacity (GB)" 
+| join type=left Hostname 
+    [| rest splunk_server_group=* /services/server/status/resource-usage/hostwide 
+    | eval cpu_count = if(isnull(cpu_count), "N/A", cpu_count) 
+    | eval mem = round(mem, 0) 
+    | fields splunk_server, cpu_count, mem 
+    | rename splunk_server AS Hostname, cpu_count AS "CPU Cores", mem AS "Memory (MB)"] 
+| join type=left Hostname 
+    [| rest splunk_server_group=* /services/server/info 
+    | rename splunk_server AS Hostname guid AS GUID 
+    | table Hostname GUID ] 
+| join type=left Hostname 
+    [| rest splunk_server_group=* /services/server/info 
+    | table splunk_server version 
+    | search version="*" 
+    | rename splunk_server AS Hostname version AS Version] 
+| stats values("Primary Role") AS "Primary Role" values("Secondary Role") AS "Secondary Role" values(Geolocation) AS Geolocation values("Operating System") AS "Operating System" values("IP Address") AS "IP Address" values(Mount) AS Mount values("Capacity (GB)") AS "Capacity (GB)" values(Version) AS Version values(GUID) AS GUID BY Hostname 
+| sort "Primary Role"</query>
+          <earliest>@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">100</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+</form>

@@ -1,0 +1,149 @@
+<form>
+  <label>User Profile</label>
+  <fieldset submitButton="true" autoRun="true">
+    <input type="dropdown" token="user">
+      <label>Username:</label>
+      <search>
+        <query>| rest splunk_server_group=dmc_group_search_head /services/authentication/users 
+| stats count by title 
+| fields title 
+| sort title</query>
+      </search>
+      <fieldForLabel>title</fieldForLabel>
+      <fieldForValue>title</fieldForValue>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <table>
+        <title>User Details</title>
+        <search>
+          <query>| rest splunk_server_group=dmc_group_search_head /services/authentication/users/$user$ 
+| fields title, realname, email, roles, n, defaultApp, tz, type, splunk_server 
+| stats values(title) AS title values(realname) AS realname values(email) AS email values(defaultApp) AS defaultApp values(tz) AS tz values(type) AS type values(splunk_server) as splunk_servers by roles 
+| join type=outer roles 
+    [ rest splunk_server_group=dmc_group_search_head /services/authorization/roles 
+    | rename title AS roles 
+    | table roles srchIndexesAllowed imported_srchIndexesAllowed imported_roles 
+    | mvexpand imported_roles 
+    | dedup imported_roles 
+    | eval indexes=mvdedup(mvappend(imported_srchIndexesAllowed,srchIndexesAllowed)) 
+    | eval roles=mvdedup(mvappend(imported_roles,roles)) 
+    | stats values(indexes) AS indexes by roles] 
+| rex field=indexes mode=sed s/\s+/;/g 
+| eval tz=if(tz=="","system default",tz) 
+| table title realname email roles defaultApp tz type splunk_servers indexes 
+| rename title AS Username realname AS "Real Name" email AS "Email" roles AS Roles defaultApp AS "Default App" tz AS "Timezone" type AS Type splunk_servers AS "Search Heads" indexes AS "Indexes"</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">row</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>User Activity</title>
+        <search>
+          <query>index=_internal user="$user$" (sourcetype=splunk_web_access OR sourcetype=splunkd_access) 
+| timechart span=1h count by sourcetype</query>
+          <earliest>-3d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <viz type="network_topology.network_topology">
+        <title>Topology: Users to Indexes</title>
+        <search>
+          <query>| rest splunk_server_group=flashlight_search_head /services/authentication/users/$user$
+| rename title AS username roles AS role 
+| mvexpand role 
+| join type=outer role 
+    [ rest splunk_server_group=flashlight_search_head /services/authorization/roles
+    | rename title AS role 
+    | table role srchIndexesAllowed imported_srchIndexesAllowed imported_roles 
+    | mvexpand imported_roles 
+    | dedup imported_roles 
+    | eval indexes=mvdedup(mvappend(imported_srchIndexesAllowed,srchIndexesAllowed))
+    | eval role=mvdedup(mvappend(imported_roles,role))
+    | stats values(indexes) AS indexes by role]  
+| rex field=indexes mode=sed s/\s+/;/g 
+| makemv delim=";" indexes 
+| eval indexes=mvdedup(indexes)
+| stats values(indexes) AS indexes values(defaultApp) AS defaultApp values(role) AS role by username realname
+| table realname username role defaultApp indexes 
+| eval indexes=mvdedup(indexes)
+| eval role2=role 
+| eventstats count(username) AS num by indexes
+| eventstats count(indexes) AS num2 by role username
+| mvexpand role 
+| mvexpand indexes 
+| mvexpand role2 
+| eval indexes2=indexes 
+| eval role2=role 
+| eval idx="index" 
+| eval usr="user" 
+| eval rl="role"
+| eval x=if(num&gt;20,"20",num)
+| eval username=if(num&gt;20,num." users",username) 
+| eval indexes=if(num&gt;20,indexes2,indexes)
+| dedup username role indexes
+| table username role indexes idx usr</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </viz>
+    </panel>
+    <panel>
+      <table>
+        <title>Capabilities</title>
+        <search>
+          <query>| rest splunk_server_group=flashlight_search_head /services/authentication/users/$user$ 
+| fields capabilities 
+| mvexpand capabilities 
+| rename capabilities AS capability
+| stats count by capability
+| table capability</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="count">25</option>
+        <option name="drilldown">row</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+</form>

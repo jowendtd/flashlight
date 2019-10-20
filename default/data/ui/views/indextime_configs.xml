@@ -1,0 +1,314 @@
+<form>
+  <label>Index-Time Configs</label>
+  <description>Use the following dashboard to identify and troubleshoot index-time operations. Particularly useful if seeing issues with the typing pipeline.</description>
+  <fieldset autoRun="true" submitButton="true">
+    <input type="dropdown" token="host">
+      <label>Indexer:</label>
+      <search>
+        <query>| rest splunk_server_group=dmc_group_indexer /services/server/info
+| fields host
+| sort host</query>
+        <earliest>-1m</earliest>
+        <latest>now</latest>
+      </search>
+      <fieldForLabel>host</fieldForLabel>
+      <fieldForValue>host</fieldForValue>
+      <choice value="*">All</choice>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="dropdown" token="exclude_default">
+      <label>Exclude system/default:</label>
+      <choice value="NOT match(file, &quot;\/system\/default\/&quot;)">Yes</choice>
+      <choice value="">No</choice>
+      <default>NOT match(file, "\/system\/default\/")</default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <input type="time" token="timepicker_index_cpu" searchWhenChanged="true">
+        <label></label>
+        <default>
+          <earliest>-60m@m</earliest>
+          <latest>now</latest>
+        </default>
+      </input>
+      <chart>
+        <title>Estimated CPU Usage per Splunk Processor</title>
+        <search>
+          <query>index=_internal host="$host$" source=*metrics.log sourcetype=splunkd group=pipeline NOT processor=sendout 
+| timechart minspan=30s per_second(eval(cpu_seconds*100)) AS pctCPU by processor useother=false limit=15</query>
+          <earliest>$timepicker_index_cpu.earliest$</earliest>
+          <latest>$timepicker_index_cpu.latest$</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Index-Time Operations by App</title>
+        <search>
+          <query>| btool props 
+| search sos_server="$host$" 
+| multikv noheader=true 
+| rex "^(?&lt;file&gt;\S+)\s+" 
+| rex field=file "(default|local)\/(?&lt;conf&gt;.*)$" 
+| where $exclude_default$ 
+| rex "\s+(?=[^\[])(?&lt;key&gt;\S+)\s*=\s*(?&lt;value&gt;.*)$" 
+| eval key=if(isnull(key),"",key) 
+| eval value=if(isnull(value),"",split(value, ",")) 
+| where match(key, "^TRANSFORMS-") 
+| table app, file, stanza, key, value 
+| rename value AS transforms_stanza * AS props_* 
+| mvexpand transforms_stanza 
+| eval transforms_stanza=trim(transforms_stanza) 
+| eventstats count AS props_stanza_transforms_count by props_stanza 
+| join transforms_stanza type=outer 
+    [| btool transforms 
+    | search sos_server="$host$" 
+    | multikv noheader=true 
+    | rex "^(?&lt;file&gt;\S+)\s+" 
+    | where $exclude_default$ 
+    | rex "\s+(?=[^\[])(?&lt;key&gt;\S+)\s*=\s*(?&lt;value&gt;.*)$" 
+    | eval key=if(isnull(key),"",key) 
+    | eval value=if(isnull(value),"",value) 
+    | eval setting=key." = ".value 
+    | stats list(eval(if(key=="",null(),"%%%".setting))) AS transforms_settings list(eval(if(key=="",null(),"%%%".file))) AS transforms_file by stanza 
+    | rename stanza AS transforms_stanza] 
+| foreach transforms_* 
+    [ makemv delim="%%%" &lt;&lt;FIELD&gt;&gt;] 
+| table props_* transforms_* 
+| sort - props_stanza_transforms_count 
+| eval possible_justification = case( match(transforms_settings, "FORMAT\s*=\s*host::"), "host re-mapping", match(transforms_settings, "FORMAT\s*=\s*sourcetype::"), "sourcetype re-mapping", match(transforms_settings, "FORMAT\s*=\s*index::"), "index re-mapping", match(transforms_settings, "FORMAT\s*=\s*source::"), "source re-mapping", match(transforms_settings, "(?:DEST_KEY\s*=\s*_meta)|(?:WRITE_META\s*=\s*(?i:true|1))"), "indexed field mapping", match(transforms_settings, "(?:FORMAT\s*=\s*nullQueue)"), "null queue routing",isnull(transforms_settings) OR transforms_settings=="", "no transforms settings have been found", 1==1, "no idea") 
+| stats count by props_app</query>
+          <earliest>$earliest$</earliest>
+          <latest>$latest$</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">pie</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>Index time operations by props stanza</title>
+        <search>
+          <query>| btool props 
+| search sos_server="$host$" 
+| multikv noheader=true 
+| rex "^(?&lt;file&gt;\S+)\s+" 
+| rex field=file "(default|local)\/(?&lt;conf&gt;.*)$" 
+| where $exclude_default$ 
+| rex "\s+(?=[^\[])(?&lt;key&gt;\S+)\s*=\s*(?&lt;value&gt;.*)$" 
+| eval key=if(isnull(key),"",key) 
+| eval value=if(isnull(value),"",split(value, ",")) 
+| where match(key, "^TRANSFORMS-") 
+| table app, file, stanza, key, value 
+| rename value AS transforms_stanza * AS props_* 
+| mvexpand transforms_stanza 
+| eval transforms_stanza=trim(transforms_stanza) 
+| eventstats count AS props_stanza_transforms_count by props_stanza 
+| join transforms_stanza type=outer 
+    [| btool transforms 
+    | search sos_server="$host$" 
+    | multikv noheader=true 
+    | rex "^(?&lt;file&gt;\S+)\s+" 
+    | where $exclude_default$ 
+    | rex "\s+(?=[^\[])(?&lt;key&gt;\S+)\s*=\s*(?&lt;value&gt;.*)$" 
+    | eval key=if(isnull(key),"",key) 
+    | eval value=if(isnull(value),"",value) 
+    | eval setting=key." = ".value 
+    | stats list(eval(if(key=="",null(),"%%%".setting))) AS transforms_settings list(eval(if(key=="",null(),"%%%".file))) AS transforms_file by stanza 
+    | rename stanza AS transforms_stanza] 
+| foreach transforms_* 
+    [ makemv delim="%%%" &lt;&lt;FIELD&gt;&gt;] 
+| table props_* transforms_* 
+| sort - props_stanza_transforms_count 
+| eval possible_justification = case( match(transforms_settings, "FORMAT\s*=\s*host::"), "host re-mapping", match(transforms_settings, "FORMAT\s*=\s*sourcetype::"), "sourcetype re-mapping", match(transforms_settings, "FORMAT\s*=\s*index::"), "index re-mapping", match(transforms_settings, "FORMAT\s*=\s*source::"), "source re-mapping", match(transforms_settings, "(?:DEST_KEY\s*=\s*_meta)|(?:WRITE_META\s*=\s*(?i:true|1))"), "indexed field mapping", match(transforms_settings, "(?:FORMAT\s*=\s*nullQueue)"), "null queue routing",isnull(transforms_settings) OR transforms_settings=="", "no transforms settings have been found", 1==1, "no idea") 
+| stats count by props_stanza</query>
+          <earliest>$earliest$</earliest>
+          <latest>$latest$</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">pie</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>Index time operations by possible justification</title>
+        <search>
+          <query>| btool props 
+| search sos_server="$host$" 
+| multikv noheader=true 
+| rex "^(?&lt;file&gt;\S+)\s+" 
+| rex field=file "(default|local)\/(?&lt;conf&gt;.*)$" 
+| where $exclude_default$ 
+| rex "\s+(?=[^\[])(?&lt;key&gt;\S+)\s*=\s*(?&lt;value&gt;.*)$" 
+| eval key=if(isnull(key),"",key) 
+| eval value=if(isnull(value),"",split(value, ",")) 
+| where match(key, "^TRANSFORMS-") 
+| table app, file, stanza, key, value 
+| rename value AS transforms_stanza * AS props_* 
+| mvexpand transforms_stanza 
+| eval transforms_stanza=trim(transforms_stanza) 
+| eventstats count AS props_stanza_transforms_count by props_stanza 
+| join transforms_stanza type=outer 
+    [| btool transforms 
+    | search sos_server="$host$" 
+    | multikv noheader=true 
+    | rex "^(?&lt;file&gt;\S+)\s+" 
+    | where $exclude_default$ 
+    | rex "\s+(?=[^\[])(?&lt;key&gt;\S+)\s*=\s*(?&lt;value&gt;.*)$" 
+    | eval key=if(isnull(key),"",key) 
+    | eval value=if(isnull(value),"",value) 
+    | eval setting=key." = ".value 
+    | stats list(eval(if(key=="",null(),"%%%".setting))) AS transforms_settings list(eval(if(key=="",null(),"%%%".file))) AS transforms_file by stanza 
+    | rename stanza AS transforms_stanza] 
+| foreach transforms_* 
+    [ makemv delim="%%%" &lt;&lt;FIELD&gt;&gt;] 
+| table props_* transforms_* 
+| sort - props_stanza_transforms_count 
+| eval possible_justification = case( match(transforms_settings, "FORMAT\s*=\s*host::"), "host re-mapping", match(transforms_settings, "FORMAT\s*=\s*sourcetype::"), "sourcetype re-mapping", match(transforms_settings, "FORMAT\s*=\s*index::"), "index re-mapping", match(transforms_settings, "FORMAT\s*=\s*source::"), "source re-mapping", match(transforms_settings, "(?:DEST_KEY\s*=\s*_meta)|(?:WRITE_META\s*=\s*(?i:true|1))"), "indexed field mapping", match(transforms_settings, "(?:FORMAT\s*=\s*nullQueue)"), "null queue routing",isnull(transforms_settings) OR transforms_settings=="", "no transforms settings have been found", 1==1, "no idea") 
+| stats count by possible_justification</query>
+          <earliest>$earliest$</earliest>
+          <latest>$latest$</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">pie</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Parsing Configs</title>
+        <search>
+          <query>| btool props 
+| search sos_server="$host$" 
+| multikv noheader=true 
+| rex "^(?&lt;file&gt;\S+)\s+" 
+| rex field=file "(default|local)\/(?&lt;conf&gt;.*)$" 
+| where $exclude_default$ 
+| rex "\s+(?=[^\[])(?&lt;key&gt;\S+)\s*=\s*(?&lt;value&gt;.*)$" 
+| eval key=if(isnull(key),"",key) 
+| eval value=if(isnull(value),"",split(value, ",")) 
+| where match(key, "^TRANSFORMS-") 
+| table app, file, stanza, key, value 
+| rename value AS transforms_stanza * AS props_* 
+| mvexpand transforms_stanza 
+| eval transforms_stanza=trim(transforms_stanza) 
+| eventstats count AS props_stanza_transforms_count by props_stanza 
+| join transforms_stanza type=outer 
+    [| btool transforms 
+    | search sos_server="$host$" 
+    | multikv noheader=true 
+    | rex "^(?&lt;file&gt;\S+)\s+" 
+    | where $exclude_default$ 
+    | rex "\s+(?=[^\[])(?&lt;key&gt;\S+)\s*=\s*(?&lt;value&gt;.*)$" 
+    | eval key=if(isnull(key),"",key) 
+    | eval value=if(isnull(value),"",value) 
+    | eval setting=key." = ".value 
+    | stats list(eval(if(key=="",null(),"%%%".setting))) AS transforms_settings list(eval(if(key=="",null(),"%%%".file))) AS transforms_file by stanza 
+    | rename stanza AS transforms_stanza] 
+| foreach transforms_* 
+    [ makemv delim="%%%" &lt;&lt;FIELD&gt;&gt;] 
+| table props_* transforms_* 
+| sort - props_stanza_transforms_count 
+| eval possible_justification = case( match(transforms_settings, "FORMAT\s*=\s*host::"), "host re-mapping", match(transforms_settings, "FORMAT\s*=\s*sourcetype::"), "sourcetype re-mapping", match(transforms_settings, "FORMAT\s*=\s*index::"), "index re-mapping", match(transforms_settings, "FORMAT\s*=\s*source::"), "source re-mapping", match(transforms_settings, "(?:DEST_KEY\s*=\s*_meta)|(?:WRITE_META\s*=\s*(?i:true|1))"), "indexed field mapping", match(transforms_settings, "(?:FORMAT\s*=\s*nullQueue)"), "null queue routing",isnull(transforms_settings) OR transforms_settings=="", "no transforms settings have been found", 1==1, "no idea")</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">true</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+</form>

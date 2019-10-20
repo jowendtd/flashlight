@@ -1,0 +1,249 @@
+<form>
+  <label>Search Performance Overview</label>
+  <fieldset autoRun="true" submitButton="true">
+    <input type="time" token="time">
+      <label>Time Select</label>
+      <default>
+        <earliest>-4h@m</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <chart>
+        <title>Search Count and Average Run Time</title>
+        <search>
+          <query>index=_audit 
+    [| inputlookup server_inventory.csv where primary_role="Search Head" 
+    | eval host=host."*" 
+    | table host] action=search user!=splunk-system-user search_id=* info=completed 
+| eval run_time_min=round(total_run_time/60,2) 
+| timechart count AS "Search Count" avg(run_time_min) AS "Run Time (Min)"</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">1</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.overlayFields">"Run Time (Min)"</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Scheduler Status by Instance</title>
+        <search>
+          <query>| rest splunk_server_group=dmc_group_search_head /servicesNS/-/-/saved/searches search="is_scheduled=1" search="disabled=0" 
+| stats count by splunk_server 
+| join splunk_server type=outer 
+    [| rest splunk_server_group=dmc_group_search_head /services/server/status/limits/search-concurrency 
+    | fields splunk_server max_hist_scheduled_searches, max_rt_scheduled_searches] 
+| join splunk_server type=outer 
+    [| rest splunk_server_group=dmc_group_search_head /services/server/status/resource-usage/splunk-processes 
+    | search search_props.role="head" (search_props.type="datamodel acceleration" OR search_props.type="report acceleration" OR search_props.type="scheduled" OR search_props.type="summary indexing") 
+    | dedup search_props.sid 
+    | stats count(eval('search_props.mode'=="historical batch" OR 'search_props.mode'=="historical")) as count_hist_search, count(eval('search_props.mode'=="RT" OR 'search_props.mode'=="RT indexed")) as count_rt_search by splunk_server ] 
+| join splunk_server type=outer 
+    [| rest splunk_server_group=dmc_group_search_head /services/server/info 
+    | fields splunk_server, numberOfCores, numberOfVirtualCores] 
+| eval count_hist_search = if(isnull(count_hist_search), 0, count_hist_search) 
+| eval count_rt_search = if(isnull(count_rt_search), 0, count_rt_search) 
+| eval hist_concur_vs_limit = count_hist_search." / ".max_hist_scheduled_searches 
+| eval rt_concur_vs_limit = count_rt_search." / ".max_rt_scheduled_searches 
+| eval core_info = if(isnull(numberOfCores), "N/A", numberOfCores)." / ".if(isnull(numberOfVirtualCores), "N/A", numberOfVirtualCores) 
+| fields splunk_server, core_info, hist_concur_vs_limit, rt_concur_vs_limit, count 
+| rename splunk_server as Instance, core_info AS "CPU Cores (Physical / Virtual)", hist_concur_vs_limit as "Concurrency of Historical Scheduled Report (Running/Limit)", rt_concur_vs_limit as "Concurrency of Real-time Scheduled Report (Running/Limit)", count as "Unique Scheduled Reports"</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Scheduler Execution</title>
+        <search>
+          <query>index=_internal 
+    [| inputlookup server_inventory.csv where primary_role="Search Head" 
+    | eval host=host."*" 
+    | table host] source=*metrics.log group=searchscheduler 
+| timechart partial=false sum(dispatched) AS Started, sum(skipped) AS Skipped 
+| appendcols 
+    [ search index=_internal 
+        [| inputlookup server_inventory.csv where primary_role="Search Head" 
+        | eval host=host."*" 
+        | table host] sourcetype=scheduler status=continued 
+    | eval savedsearch_id_scheduled_time=savedsearch_id."-".scheduled_time 
+    | timechart dc(savedsearch_id_scheduled_time) AS Deferred]</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">1</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.overlayFields">"Run Time (Min)"</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Bundle Size and Time</title>
+        <search>
+          <query>index=_internal 
+    [| inputlookup server_inventory.csv where primary_role="Search Head" 
+    | eval host=host."*" 
+    | table host] component=DistributedBundleReplicationManager replication_reason=* bundle_size&gt;0 
+| eval bundleSizeKB=substr(bundle_size,1,(LEN(bundle_size)-2)) 
+| stats avg(bundleSizeKB) AS avgBundleSizeKB avg(elapsed_ms) AS avgElapsedMS by host 
+| eval avgBundleSizeKB=round(avgBundleSizeKB,2) 
+| eval avgElapsedMS=round(avgElapsedMS,2) 
+| rename avgBundleSizeKB AS "Avg Bundle Size (KB)" avgElapsedMS AS "Avg Time (ms)"</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.overlayFields">"Avg Time (ms)"</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>Failed Bundle Tx</title>
+        <search>
+          <query>index=_internal 
+    [| inputlookup server_inventory.csv where primary_role="Search Head" 
+    | eval host=host."*" 
+    | table host] component=DistributedPeerManager "Unable to distribute to peer" 
+| rex field=message "Unable to distribute to peer named (?&lt;peer_name&gt;[\w\d.:]*) " 
+| table _time host peer_name _raw 
+| timechart count</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Search Duration Histogram by Search Head</title>
+        <search>
+          <query>index=_audit 
+    [| inputlookup server_inventory.csv where primary_role="Search Head" 
+    | eval host=host."*" 
+    | table host] action=search user!=splunk-system-user search_id=* (info=granted OR info=completed) 
+| eval run_time_min=round(total_run_time/60,2) 
+| stats earliest(_time) AS "Start Time" latest(_time) AS "End Time" count values(search) AS Search values(user) AS User max(run_time_min) AS run_time_min by search_id host 
+| convert ctime(*Time) 
+| where count&gt;1 
+| fields - count 
+| rename search_id AS SID 
+| bucket run_time_min span=5 
+| chart count over run_time_min by host useother=false 
+| rename run_time_min AS "Run Time (Minutes)"</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+</form>

@@ -1,0 +1,36 @@
+<form>
+  <label>Truncation Issues</label>
+  <fieldset submitButton="false">
+    <input type="time" token="timeselect">
+      <label>Time Range:</label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <table>
+        <title>Truncation Issues</title>
+        <search>
+          <query>index=_internal sourcetype=splunkd component=LineBreakingProcessor 
+| extract 
+| rex "because\slimit\sof\s(?&lt;limit&gt;\S+).*&gt;=\s(?&lt;actual&gt;\S+)" 
+| stats count avg(actual) max(actual) values(data_source) values(data_host) dc(data_source) dc(data_host) BY data_sourcetype, limit 
+| eval avg(actual)=round('avg(actual)') 
+| sort - count 
+| rename data_sourcetype AS Sourcetype limit AS Limit count AS Count "avg(actual)" AS "Avg Actual" "max(actual)" AS "Max Actual" "values(data_source)" AS "Data Sources" "values(data_host)" AS Hosts "dc(data_source)" AS "# Sources" "dc(data_host)" AS "# Hosts"</query>
+          <earliest>$timeselect.earliest$</earliest>
+          <latest>$timeselect.latest$</latest>
+        </search>
+        <option name="count">5</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">row</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">true</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+</form>

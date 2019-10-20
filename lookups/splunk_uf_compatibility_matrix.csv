@@ -1,0 +1,86 @@
+os_name,os_version,arch,latest_splunk_uf_version
+Windows,10,32-bit,7.1.2
+Windows,8.1,32-bit,7.1.2
+Windows,8,32-bit,6.6.8
+Windows,7,32-bit,6.4.10
+Windows,Server 2008,32-bit,6.3.13
+Windows,Server 2003,32-bit,6.2.14
+Windows,Server 2003 R2,32-bit,6.2.14
+Windows,XP,32-bit,6.1.13
+Windows,Vista,32-bit,6.1.13
+Windows,10,64-bit,7.1.2
+Windows,8.1,64-bit,7.1.2
+Windows,Server 2008 R2,64-bit,7.1.2
+Windows,Server 2012,64-bit,7.1.2
+Windows,Server 2012 R2,64-bit,7.1.2
+Windows,Server 2016,64-bit,7.1.2
+Windows,8,64-bit,6.6.8
+Windows,7,64-bit,6.4.10
+Windows,Server 2008,64-bit,6.3.13
+Windows,Server 2003,64-bit,6.2.14
+Windows,Server 2003 R2,64-bit,6.2.14
+Windows,XP,64-bit,6.1.11
+Windows,Vista,64-bit,6.1.11
+Linux,Kernel 4.14,32-bit,7.1.2
+Linux,Kernel 4.9,32-bit,7.1.2
+Linux,Kernel 4.4,32-bit,7.1.2
+Linux,Kernel 4.14,32-bit,7.1.2
+Linux,Kernel 4.0,32-bit,7.1.2
+Linux,Kernel 3.19,32-bit,7.1.2
+Linux,Kernel 3.16,32-bit,7.1.2
+Linux,Kernel 3.12,32-bit,7.1.2
+Linux,Kernel 3.10,32-bit,7.1.2
+Linux,Kernel 3.4,32-bit,7.1.2
+Linux,Kernel 3.2,32-bit,7.1.2
+Linux,Kernel 3.0,32-bit,7.1.2
+Linux,Kernel 2.6,32-bit,7.1.2
+Linux,Kernel 2.4,32-bit,6.3.3
+Linux,Kernel 4.14,64-bit,7.1.2
+Linux,Kernel 4.9,64-bit,7.1.2
+Linux,Kernel 4.4,64-bit,7.1.2
+Linux,Kernel 4.14,64-bit,7.1.2
+Linux,Kernel 4.0,64-bit,7.1.2
+Linux,Kernel 3.19,64-bit,7.1.2
+Linux,Kernel 3.16,64-bit,7.1.2
+Linux,Kernel 3.12,64-bit,7.1.2
+Linux,Kernel 3.10,64-bit,7.1.2
+Linux,Kernel 3.4,64-bit,7.1.2
+Linux,Kernel 3.2,64-bit,7.1.2
+Linux,Kernel 3.0,64-bit,7.1.2
+Linux,Kernel 2.6,64-bit,7.1.2
+Linux,Kernel 4.14,s390x,7.1.2
+Linux,Kernel 4.9,s390x,7.1.2
+Linux,Kernel 4.4,s390x,7.1.2
+Linux,Kernel 4.14,s390x,7.1.2
+Linux,Kernel 4.0,s390x,7.1.2
+Linux,Kernel 3.19,s390x,7.1.2
+Linux,Kernel 3.16,s390x,7.1.2
+Linux,Kernel 3.12,s390x,7.1.2
+Linux,Kernel 3.10,s390x,7.1.2
+Linux,Kernel 3.4,s390x,7.1.2
+Linux,Kernel 3.2,s390x,7.1.2
+Linux,Kernel 3.0,s390x,7.1.2
+Linux,Kernel 2.6,s390x,7.1.2
+AIX,7.2,Itanium,7.1.2
+AIX,7.1,Itanium,7.1.2
+AIX,6.1,Itanium,6.5.9
+HP-UX,11i v2,PA-RISC,6.1.8
+HP-UX,11i v3,PA-RISC,6.1.8
+HP-UX,11i v2,Itanium,6.2.14
+HP-UX,11i v3,Itanium,6.2.14
+Solaris,11,32-bit,6.3.2
+Solaris,10,32-bit,6.3.2
+Solaris,9,32-bit,6.2.6
+Solaris,11,64-bit,7.1.2
+Solaris,10,64-bit,7.1.2
+Solaris,9,64-bit,6.1.11
+Solaris,11,SPARC,7.1.2
+Solaris,10,SPARC,7.1.2
+Solaris,9,SPARC,6.2.6
+Solaris,8,SPARC,6.2.6
+MacOS,OSX 10.13,Intel,7.1.2
+MacOS,OSX 10.12,Intel,7.1.2
+MacOS,OSX 10.11,Intel,7.1.2
+MacOS,OSX 10.9,Intel,6.4.10
+MacOS,OSX 10.8,Intel,6.2.14
+

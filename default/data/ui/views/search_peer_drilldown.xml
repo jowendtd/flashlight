@@ -1,0 +1,146 @@
+<form>
+  <label>Search Peer Drilldown</label>
+  <fieldset autoRun="true" submitButton="true">
+    <input type="time" searchWhenChanged="false" token="time_select">
+      <label>Time Range:</label>
+      <default>
+        <earliest>-4h@m</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="multiselect" token="search_peers">
+      <label>Search Peers:</label>
+      <search>
+        <query>| inputlookup server_inventory.csv where primary_role="Indexer" | table host</query>
+      </search>
+      <fieldForLabel>host</fieldForLabel>
+      <fieldForValue>host</fieldForValue>
+      <default>*</default>
+      <choice value="*">All</choice>
+      <prefix>(</prefix>
+      <suffix>)</suffix>
+      <valuePrefix>host=</valuePrefix>
+      <delimiter> OR </delimiter>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <table>
+        <title>Search Peer Status</title>
+        <search>
+          <query>| rest splunk_server=local /services/search/distributed/peers | rex field=id ".+\/search\/distributed\/peers\/(?&lt;normalizedID&gt;[\w\d]+)" | rename status as search_peer_status | search $search_peers$ | eval host=if(isnull(host) OR host="",normalizedID,host) | eval search_peer_status=if(isnull(search_peer_status) OR search_peer_status="","Down",search_peer_status) | eval startTime=if(startup_time=0, "Down", strftime(startup_time, "%Y-%m-%d %H:%M:%S.%3Q %p")) | table host replicationStatus search_peer_status startTime | rename host AS "Search Peer" search_peer_status AS "Peer Status" startTime AS "Last Splunk Start"</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="drilldown">row</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="count">10</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Indexing Thruput</title>
+        <search>
+          <query>index=_internal $search_peers$ component=Metrics group=thruput name=thruput 
+| timechart avg(average_kbps) as avg_kbps by host useother=false</query>
+          <earliest>$time_select.earliest$</earliest>
+          <latest>$time_select.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Failed Bundle Tx</title>
+        <search>
+          <query>index=_internal $search_peers$ component=DistributedPeerManager "Unable to distribute to peer" | rex field=message "Unable to distribute to peer named (?&lt;peer_name&gt;[\w\d.:]*) " | table _time host peer_name _raw | timechart count</query>
+          <earliest>$time_select.earliest$</earliest>
+          <latest>$time_select.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">collapsed</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">none</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Failed Bundle Tx Detail</title>
+        <search>
+          <query>index=_internal component=DistributedPeerManager "Unable to distribute to peer" | rex field=message "Unable to distribute to peer named (?&lt;peer_name&gt;[\w\d.:]*) " | table _time host peer_name _raw | sort host | stats count by host peer_name | rename host AS "Search Head" peer_name AS "Search Peer" count AS "Tx Failures" | sort - "Tx Failures"</query>
+          <earliest>$time_select.earliest$</earliest>
+          <latest>$time_select.latest$</latest>
+        </search>
+        <option name="wrap">true</option>
+        <option name="rowNumbers">false</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="count">10</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Bundle Size and Time</title>
+        <search>
+          <query>index=_internal $search_peers$ component=DistributedBundleReplicationManager replication_reason=* bundle_size&gt;0 | eval bundleSizeKB=substr(bundle_size,1,(LEN(bundle_size)-2)) | stats avg(bundleSizeKB) AS avgBundleSizeKB avg(elapsed_ms) AS avgElapsedMS by host | eval avgBundleSizeKB=round(avgBundleSizeKB,2) | eval avgElapsedMS=round(avgElapsedMS,2)</query>
+          <earliest>$time_select.earliest$</earliest>
+          <latest>$time_select.latest$</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">1</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.overlayFields">avgElapsedMS</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+</form>

@@ -1,0 +1,118 @@
+<dashboard>
+  <label>Index Retention and Sizing</label>
+  <search id="BaseSearch">
+    <query>
+      <![CDATA[
+    | rest splunk_server_group=dmc_group_cluster_master /services/cluster/config 
+| table replication_factor search_factor 
+| append 
+    [| inputlookup index_definition.csv where dailyVolumeGB>0 
+    | eval baseRawSizeGB=(dailyVolumeGB*warmRetentionDays*compressionFactor) 
+    | eval baseIndexSizeGB=(dailyVolumeGB*warmRetentionDays*metadataFactor) 
+    | eval baseSizeOnDiskGB=baseRawSizeGB+baseIndexSizeGB 
+    | eval repSizeOnDiskGB=If(indexReplication="Y",((repFactor*baseRawSizeGB)+(searchFactor*baseIndexSizeGB)), baseSizeOnDiskGB) 
+    | eval perIndexGB=ceiling(repSizeOnDiskGB/20)] 
+| table description index dailyVolumeGB warmRetentionDays coldRetentionDays frozenRetentionDays perIndexGB baseSizeOnDiskGB repSizeOnDiskGB indexReplication 
+| rename description AS Description index AS Index dailyVolumeGB AS "Daily Volume" warmRetentionDays AS "Warm Retention Period" coldRetentionDays AS "Cold Retention Period" frozenRetentionDays AS "Frozen Retention Period" perIndexGB AS "Per Indexer" baseSizeOnDiskGB AS "Base Size On Disk" repSizeOnDiskGB AS "Replicated Size On Disk" indexReplication AS "Index Replication" ]]>
+    </query>
+    <earliest>0</earliest>
+    <latest></latest>
+  </search>
+  <row>
+    <panel>
+      <title>Storage Requirements</title>
+      <single>
+        <title>Storage Per Indexer</title>
+        <search base="BaseSearch">
+          <query>| stats sum("Per Indexer") AS "Storage Per Indexer"</query>
+        </search>
+        <option name="unit">GB</option>
+      </single>
+      <single>
+        <title>Total Storage</title>
+        <search base="BaseSearch">
+          <query>| stats sum("Replicated Size On Disk") AS "Total Replicated Storage"</query>
+        </search>
+        <option name="unit">GB</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <single>
+        <title>Daily License Usage</title>
+        <search base="BaseSearch">
+          <query>| stats sum("Daily Volume") AS "Daily Volume"</query>
+        </search>
+        <option name="numberPrecision">0.00</option>
+        <option name="unit">GB</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Number of Indexes</title>
+        <search base="BaseSearch">
+          <query>| stats count</query>
+        </search>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Average Warm Retention Period</title>
+        <search base="BaseSearch">
+          <query>| stats avg("Warm Retention Period") AS "Average Warm Retention"</query>
+        </search>
+        <option name="refresh.display">progressbar</option>
+        <option name="unit">Days</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <html>
+      <a href="/app/flashlight/search?s=%2FservicesNS%2Fnobody%2Fflashlight%2Fsaved%2Fsearches%2FAvg%2520License%2520by%2520Index%2520-%252030%2520Days" target="_blank">Run Report</a>
+    </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Size and Retention Per Index</title>
+        <search base="BaseSearch"></search>
+        <option name="count">100</option>
+        <option name="percentagesRow">false</option>
+        <option name="totalsRow">true</option>
+        <format type="number" field="Per Indexer">
+          <option name="precision">0</option>
+          <option name="unit">GB</option>
+        </format>
+        <format type="number" field="Base Size On Disk">
+          <option name="precision">0</option>
+          <option name="unit">GB</option>
+        </format>
+        <format type="number" field="Replicated Size On Disk">
+          <option name="precision">0</option>
+          <option name="unit">GB</option>
+        </format>
+        <format type="color" field="Index Replication (Y/N)">
+          <colorPalette type="map">{"Y":#65A637,"N":#D93F3C}</colorPalette>
+        </format>
+        <format type="color" field="Replicated Size On Disk">
+          <colorPalette type="minMidMax" maxColor="#D6563C" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax"></scale>
+        </format>
+        <format type="color" field="Index Replication">
+          <colorPalette type="map">{"Y":#65A637,"N":#D93F3C}</colorPalette>
+        </format>
+        <format type="number" field="Daily Volume">
+          <option name="precision">3</option>
+          <option name="unit">GB/day</option>
+        </format>
+        <format type="number" field="Retention Period">
+          <option name="precision">0</option>
+          <option name="unit">Days</option>
+        </format>
+      </table>
+    </panel>
+  </row>
+</dashboard>

@@ -1,0 +1,270 @@
+{
+    "modelName": "Log_Splunk_Web_Access",
+    "displayName": "Log - Splunk Web Access",
+    "description": "",
+    "objectSummary": {
+        "Event-Based": 1,
+        "Transaction-Based": 0,
+        "Search-Based": 0
+    },
+    "objects": [
+        {
+            "objectName": "Web_Access_Events",
+            "displayName": "Web Access Events",
+            "parentName": "BaseEvent",
+            "fields": [
+                {
+                    "fieldName": "file",
+                    "owner": "Web_Access_Events",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "file",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "method",
+                    "owner": "Web_Access_Events",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "method",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "model",
+                    "owner": "Web_Access_Events",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "model",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "referer",
+                    "owner": "Web_Access_Events",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "referer",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "referer_domain",
+                    "owner": "Web_Access_Events",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "referer_domain",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "req_time",
+                    "owner": "Web_Access_Events",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "req_time",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "status",
+                    "owner": "Web_Access_Events",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "status",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "uri",
+                    "owner": "Web_Access_Events",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "uri",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "uri_domain",
+                    "owner": "Web_Access_Events",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "uri_domain",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "uri_path",
+                    "owner": "Web_Access_Events",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "uri_path",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "uri_query",
+                    "owner": "Web_Access_Events",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "uri_query",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "user",
+                    "owner": "Web_Access_Events",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "user",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "useragent",
+                    "owner": "Web_Access_Events",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "useragent",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "version",
+                    "owner": "Web_Access_Events",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "version",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "field",
+                    "owner": "Web_Access_Events",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "field",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "ns",
+                    "owner": "Web_Access_Events",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "ns",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "_time",
+                    "owner": "BaseEvent",
+                    "type": "timestamp",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "_time",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "host",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "host",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "source",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "source",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "sourcetype",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "sourcetype",
+                    "comment": ""
+                }
+            ],
+            "calculations": [],
+            "constraints": [
+                {
+                    "search": "index=_internal sourcetype=splunk_web_access user!=\"-\"",
+                    "owner": "Web_Access_Events"
+                }
+            ],
+            "lineage": "Web_Access_Events"
+        }
+    ],
+    "objectNameList": [
+        "Web_Access_Events"
+    ]
+}

@@ -1,0 +1,47 @@
+<dashboard>
+  <label>User Overview</label>
+  <row>
+    <panel>
+      <single>
+        <title>Total Unique Users</title>
+        <search>
+          <query>| rest splunk_server_group=dmc_group_search_head /services/authentication/users 
+| stats dc(title)</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Active Users</title>
+        <search>
+          <query>| tstats summariesonly=true distinct_count(Web_Access_Events.user) AS Users from datamodel="Log_Splunk_Web_Access" GROUPBY _time</query>
+          <earliest>-4h@m</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <single>
+        <title>User Distribution</title>
+        <search>
+          <query>| rest splunk_server_group=dmc_group_search_head /services/authentication/users 
+| stats dc(title) as title by splunk_server 
+| sort splunk_server</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="trellis.enabled">1</option>
+      </single>
+    </panel>
+  </row>
+</dashboard>

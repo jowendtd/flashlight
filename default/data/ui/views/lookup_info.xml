@@ -1,0 +1,64 @@
+<dashboard>
+  <label>Lookup Info</label>
+  <row>
+    <panel>
+      <html tokens="true">
+        <div id="usage_help">
+          <h4>A <i>lookup</i> is knowledge object that provides data enrichment by mapping a select value in an event to a field in another data source, and appending the matched results to the original event. For example, you can use a lookup to match an HTTP status code and return a new field containing a detailed description of the status.</h4>
+          	<h1>Lookups</h1>
+			<table border="1" cellpadding="5">
+			  <tr>
+				<th>Name</th>
+				<th>Type</th>
+				<th>Fields</th>
+				<th>Description</th>
+                <th>Search</th>
+			  </tr>
+			  <tr>
+				<td>daily_host_list.csv</td>
+				<td>LOOKUP</td>
+				<td>host</td>
+				<td>List of data source hosts.</td>
+                <td><a href="search?q=%7C%20inputlookup%20daily_host_list.csv%20%7C%20table%20host" target="_blank">Table</a></td>
+			  </tr>
+			  <tr>
+				<td>data_sources.csv</td>
+				<td>LOOKUP</td>
+				<td>index, sourcetype, owner_group, owner_name, owner_email, description</td>
+				<td>List to map data sources to data owner.</td>
+                <td><a href="search?q=%7C+inputlookup+data_sources.csv+%7C+table+index%2C+sourcetype%2C+owner_group%2C+owner_name%2C+owner_email%2C+description" target="_blank">Table</a></td>
+			  </tr>
+			  <tr>
+				<td>license_info.csv</td>
+				<td>LOOKUP</td>
+				<td>owner_group, description, index,sourcetype, label, quotaMB, license_creation, license_expire, support_expire, entitlement, guid</td>
+				<td>List to map purchased Splunk licenses to sourcetype and owner.</td>
+                <td><a href="search?q=%7C+inputlookup+license_info.csv+%7C+table+owner_group%2C+description%2C+index%2Csourcetype%2C+label%2C+quotaMB%2C+license_creation%2C+license_expire%2C+support_expire%2C+entitlement%2C+guid" target="_blank">Table</a></td>
+			  </tr>
+			  <tr>
+				<td>network_inputs.csv</td>
+				<td>LOOKUP</td>
+				<td>port, index, sourcetype, protocol, description</td>
+				<td>List of known data source ports.</td>
+                <td><a href="search?q=%7C+inputlookup+network_inputs.csv+%7C+table+port%2C+index%2C+sourcetype%2C+protocol%2C+description" target="_blank">Table</a></td>
+			  </tr>
+			  <tr>
+				<td>server_inventory.csv</td>
+				<td>LOOKUP</td>
+				<td>host, primary_role, secondary_role, geolocation, operating_system, ip_address, servertype, description, chassis</td>
+				<td>List of Splunk infrastructure servers.</td>
+                <td><a href="search?q=%7C+inputlookup+server_inventory.csv+%7C+table+host%2C+primary_role%2C+secondary_role%2C+geolocation%2C+operating_system%2C+ip_address%2C+servertype%2C+description%2C+chassis" target="_blank">Table</a></td>
+			  </tr>
+			  <tr>
+				<td>sourcetype_to_index.csv</td>
+				<td>LOOKUP</td>
+				<td>index, sourcetype</td>
+				<td>List to map sourcetype to index..</td>
+                <td><a href="search?q=%7C+inputlookup+sourcetype_to_index.csv+%7C+table+index%2C+sourcetype" target="_blank">Table</a></td>
+			  </tr>
+			</table>
+        </div>
+      </html>
+    </panel>
+  </row>
+</dashboard>

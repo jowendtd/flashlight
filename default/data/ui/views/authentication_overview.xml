@@ -1,0 +1,51 @@
+<dashboard>
+  <label>Authentication Overview</label>
+  <row>
+    <panel>
+      <single>
+        <title>Authentication Provider</title>
+        <search>
+          <query>| rest splunk_server_group=dmc_group_search_head /services/authentication/providers/services 
+| stats values(splunk_server) AS splunk_server by active_authmodule 
+| table active_authmodule</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+    <panel>
+      <table>
+        <search>
+          <query>| rest splunk_server_group=dmc_group_search_head /services/authentication/providers/LDAP 
+| stats values(host) AS host values(port) AS port values(SSLEnabled) AS SSLEnabled values(anonymous_referrals) AS anonymous_referrals values(nestedGroups) AS nestedGroups values(splunk_server) AS splunk_server by title</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Authentication Errors</title>
+        <search>
+          <query>index=_internal 
+    [ inputlookup server_inventory.csv where primary_role="Search Head" 
+    | table host] (component=UserManagerPro OR component=ScopedLDAPConnection OR component=AuthenticationManagerLDAP OR component=AuthorizationManager) 
+| stats values(host) AS host count BY message 
+| sort - count</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+</dashboard>

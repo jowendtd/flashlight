@@ -1,0 +1,73 @@
+[app/ui]
+
+[app/launcher]
+
+[]
+access = read : [ admin, power, ro-monitoring ], write : [ admin ]
+export = system
+
+[collections]
+access = read : [ admin, power, ro-monitoring ], write : [ admin ]
+owner = admin
+export = system
+
+[commands]
+access = read : [ admin, power, ro-monitoring ], write : [ admin ]
+owner = admin
+export = system
+
+[datamodels]
+access = read : [ admin, power, ro-monitoring ], write : [ admin ]
+owner = admin
+export = system
+
+[eventtypes]
+access = read : [ admin, power, ro-monitoring ], write : [ admin ]
+owner = admin
+export = system
+
+[lookups]
+access = read : [ admin, power, ro-monitoring ], write : [ admin ]
+owner = admin
+export = system
+
+[nav/default]
+access = read : [ admin, power, ro-monitoring ], write : [ admin ]
+owner = admin
+export = system
+version = 7.0.3
+modtime = 1533244765.792576000
+
+[models]
+access = read : [ admin, power, ro-monitoring ], write : [ admin ]
+owner = admin
+export = system
+
+[props]
+access = read : [ admin, power, ro-monitoring ], write : [ admin ]
+owner = admin
+export = system
+
+[savedsearches]
+access = read : [ admin, power, ro-monitoring ], write : [ admin ]
+owner = admin
+export = system
+
+[searchscripts]
+access = read : [ admin, power, ro-monitoring ], write : [ admin ]
+owner = admin
+export = system
+
+[transforms]
+access = read : [ admin, power, ro-monitoring ], write : [ admin ]
+owner = admin
+export = system
+
+[views]
+access = read : [ admin, power, ro-monitoring ], write : [ admin ]
+owner = admin
+export = system
+
+[viewstates]
+access = read : [ * ], write : [ * ]
+export = system

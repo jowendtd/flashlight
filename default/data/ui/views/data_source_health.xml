@@ -1,0 +1,123 @@
+<form>
+  <label>Data Source Health</label>
+  <fieldset submitButton="false">
+    <input type="time" token="timeselect">
+      <label>Time Range</label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <chart>
+        <title>Data Parsing Errors by Component</title>
+        <search>
+          <query>index=_internal sourcetype=splunkd component=LineBreakingProcessor OR component=DateParserVerbose OR component=Aggregator* 
+| timechart count by component</query>
+          <earliest>$timeselect.earliest$</earliest>
+          <latest>$timeselect.latest$</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Sourcetypes Missing &gt; 7 Days</title>
+        <search>
+          <query>| metadata type=sourcetypes 
+| eval sourcetype = lower(sourcetype) 
+| table sourcetype lastTime 
+| fieldformat "lastTime"=strftime('lastTime', "%D %H:%M:%S %p") 
+| where lastTime &lt; relative_time(now(), "-7d@d") 
+| sort sourcetype</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">true</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Rogue Data Sources</title>
+        <search>
+          <query>index=_internal sourcetype=splunkd component=IndexerService log_level=WARN message="Received event for unconfigured/disabled/deleted*" 
+| rex field=message "index=(?&lt;source_index&gt;[\w\d_]*)" 
+| rex field=message "source=\"source::(?&lt;source_source&gt;[:\w\d\\\.]*)" 
+| rex field=message "host=\"host::(?&lt;source_host&gt;[\w\d\s]*)" 
+| rex field=message "sourcetype=\"sourcetype::(?&lt;source_sourcetype&gt;[:\w\d]*)" 
+| rename host AS "Indexer" source_index AS "Index" source_source AS "Source" source_host AS "Source Host" source_sourcetype AS "Sourcetype" 
+| table Indexer Source Index Sourcetype "Source Host" 
+| sort Indexer</query>
+          <earliest>$timeselect.earliest$</earliest>
+          <latest>$timeselect.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Network Inputs</title>
+        <search>
+          <query>index=_internal source="*metrics.log" ("group=udpin_connections" OR "group=tcpin_connections") NOT ("udp_bps=0.00" OR "tcp_bps=0.00") (sourcePort&gt;=3999 AND sourcePort&lt;=4050) 
+| stats count by sourcePort, host, group 
+| eval sourceProtocol = if(group == "udpin_connections", "udp", if(group == "tcpin_connections", "tcp", "")) 
+| stats count(host) as fwd by sourceProtocol sourcePort 
+| lookup local=1 network_inputs.csv port AS sourcePort, protocol AS sourceProtocol OUTPUT index sourcetype description 
+| eval sourceProtocol=upper(sourceProtocol) 
+| table index sourcetype description sourceProtocol sourcePort fwd 
+| sort sourceProtocol sourcePort 
+| rename index AS Index, sourcetype AS Sourcetype, description AS Description, sourceProtocol AS Protocol, sourcePort AS Port, fwd AS Forwarders</query>
+          <earliest>-4h@m</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+</form>

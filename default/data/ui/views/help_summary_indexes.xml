@@ -1,0 +1,39 @@
+<dashboard>
+  <label>Summary Indexes</label>
+  <row>
+    <panel>
+      <html>
+        <div id="help_summary_indexes">
+          <h4>A <i>summary index</i> is a special index that stores the results of a scheduled report, when you enable summary indexing for the report. Summary indexing lets you run fast searches over large data sets by spreading out the cost of a computationally expensive report over time. To achieve this, the search that populates the summary index runs on a frequent, recurring basis and extracts the specific data that you require. You can then run fast and efficient searches against this small subset of data in the summary index.</h4>
+          <h1>Summary Indexes</h1>
+			<table border="1" cellpadding="5">
+			  <tr>
+  				<th>Index Name</th>
+  				<th>Fields</th>
+  				<th>Description</th>
+          <th>Search</th>
+			  </tr>
+			  <tr>
+  				<td>summary_license_history</td>
+  				<td>date, pool, volume_b, quota_b</td>
+  				<td>Historical license information that saves the amount of used license and quota (in Bytes) per license pool.</td>
+          <td><a href="search?q=index%3Dsummary_license_history+%7C+table+date+pool+volume_b+quota_b%0D%0A" target="_blank">Table</a></td>
+			  </tr>
+			  <tr>
+  				<td>summary_license_history_detail</td>
+  				<td>date, pool, index_name, sourcetype_name, indexedMB</td>
+  				<td>Historical detailed license information that saves the amount of used license (in MB) per sourcetype/index..</td>
+          <td><a href="search?q=index%3Dsummary_license_history_detail+%7C+table+date+pool+index_name+sourcetype_name+indexedMB" target="_blank">Table</a></td>
+			  </tr>
+			  <tr>
+  				<td>summary_storage_history</td>
+  				<td>date, splunk_host, mount_point, diskUsageMB, diskTotalMB</td>
+  				<td>Historical Indexer disk storage information that saves the amounts of used and total disk space (in MB) for every partition that Splunk is installed on (mount point).</td>
+          <td><a href="search?q=index%3Dsummary_storage_history%20%7C%20table%20date%20splunk_host%20mount_point%20diskUsageMB%20diskTotalMB" target="_blank">Table</a></td>
+			  </tr>
+			</table>
+        </div>
+      </html>
+    </panel>
+  </row>
+</dashboard>

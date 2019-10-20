@@ -1,0 +1,116 @@
+<form>
+  <label>Data Model Overview</label>
+  <search id="datamodel_base">
+    <query>| rest splunk_server_group=dmc_group_search_head /services/admin/summarization by_tstats=t count=0 
+| eval datamodel=replace('summary.id',"DM_".'eai:acl.app'."_","") 
+| join type=left datamodel 
+    [| rest splunk_server_group=dmc_group_search_head /services/data/models count=0 
+    | table title acceleration.cron_schedule eai:digest 
+    | rename title as datamodel 
+    | rename acceleration.cron_schedule AS cron] 
+| table datamodel eai:acl.app summary.access_time summary.is_inprogress summary.size summary.latest_time summary.complete summary.buckets_size summary.buckets cron summary.last_error summary.time_range summary.id summary.mod_time eai:digest summary.earliest_time summary.last_sid summary.access_count splunk_server 
+| search splunk_server=$select_searchhead$
+| rename summary.id AS summary_id, summary.time_range AS retention, summary.earliest_time as earliest, summary.latest_time as latest, eai:digest as digest 
+| rename summary.* AS *, eai:acl.* AS * 
+| sort datamodel 
+| rename access_count AS Datamodel_Acceleration.access_count access_time AS Datamodel_Acceleration.access_time app AS Datamodel_Acceleration.app buckets AS Datamodel_Acceleration.buckets buckets_size AS Datamodel_Acceleration.buckets_size cron AS Datamodel_Acceleration.cron complete AS Datamodel_Acceleration.complete datamodel AS Datamodel_Acceleration.datamodel digest AS Datamodel_Acceleration.digest earliest AS Datamodel_Acceleration.earliest is_inprogress AS Datamodel_Acceleration.is_inprogress last_error AS Datamodel_Acceleration.last_error last_sid AS Datamodel_Acceleration.last_sid latest AS Datamodel_Acceleration.latest mod_time AS Datamodel_Acceleration.mod_time retention AS Datamodel_Acceleration.retention size AS Datamodel_Acceleration.size summary_id AS Datamodel_Acceleration.summary_id 
+| rename "Datamodel_Acceleration.*" as * 
+| join type=outer last_sid 
+    [| rest splunk_server_group=dmc_group_search_head count=0 /services/search/jobs reportSearch=summarize* 
+    | rename sid as last_sid 
+    | fields last_sid,runDuration] 
+| stats values(app) AS app values(access_time) AS access_time values(is_inprogress) AS is_inprogress values(size) AS size values(latest) AS latest values(complete) AS complete values(buckets_size) AS buckets_size values(buckets) AS buckets values(cron) AS cron values(last_error) AS last_error values(retention) AS retention values(summary_id) AS summary_id values(mod_time) AS mod_time values(digest) AS digest values(earliest) AS earliest values(last_sid) AS last_sid values(access_count) AS access_count values(runDuration) AS runDuration values(splunk_server) AS splunk_server by datamodel 
+| eval "size(MB)"=round(size/1048576,1), "retention(days)"=if(retention==0,"unlimited",round(retention/86400,1)), "complete(%)"=round(complete*100,1), "runDuration(s)"=round(runDuration,1) 
+</query>
+    <earliest>-24h@h</earliest>
+    <latest>now</latest>
+  </search>
+  <fieldset submitButton="true" autoRun="false">
+    <input type="dropdown" token="select_shcluster" searchWhenChanged="false">
+      <label>SH Cluster:</label>
+      <choice value="*">ALL</choice>
+      <initialValue>*</initialValue>
+      <fieldForLabel>shcluster_label</fieldForLabel>
+      <fieldForValue>shcluster_label</fieldForValue>
+      <search>
+        <query>| rest splunk_server_group=dmc_group_search_head /services/server/info
+| stats count by shcluster_label</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="select_searchhead" searchWhenChanged="false">
+      <label>Search Head:</label>
+      <choice value="*">ALL</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+      <fieldForLabel>host</fieldForLabel>
+      <fieldForValue>host</fieldForValue>
+      <search>
+        <query>| rest splunk_server_group=dmc_group_search_head /services/server/info
+| search shcluster_label="$select_shcluster$"
+| fields host
+| sort host</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <chart>
+        <title>Top Accelerations by Size</title>
+        <search base="datamodel_base">
+          <query>sort 18 - size(MB) 
+| table datamodel,size(MB)</query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.chart">bar</option>
+        <option name="charting.legend.placement">none</option>
+        <option name="height">350</option>
+        <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <link target="_blank">/app/flashlight/data_model_drilldown?form.select_data_model=$click.value$</link>
+        </drilldown>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>Top Accelerations by Duration</title>
+        <search base="datamodel_base">
+          <query>sort 18 - runDuration(s) 
+| table datamodel,runDuration(s)</query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart">bar</option>
+        <option name="charting.legend.placement">none</option>
+        <option name="height">350</option>
+        <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <link target="_blank">/app/flashlight/data_model_drilldown?form.select_data_model=$click.value$</link>
+        </drilldown>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Data Model Acceleration Details</title>
+        <search base="datamodel_base">
+          <query>sort 100 + datamodel 
+| fieldformat earliest=strftime(earliest, "%m/%d/%Y %H:%M:%S") 
+| fieldformat latest=strftime(latest, "%m/%d/%Y %H:%M:%S") 
+| stats values(app) AS app values(cron) AS cron values(retention(days)) AS retention(days) values(earliest) AS earliest values(latest) AS latest values(is_inprogress) AS is_inprogress values(complete(%)) AS complete(%) values(size(MB)) AS size(MB) values(runDuration(s)) AS runDuration(s) values(last_error) AS last_error values(splunk_server) AS splunk_server by datamodel</query>
+        </search>
+        <option name="dataOverlayMode">heatmap</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <link target="_blank">/app/flashlight/data_model_drilldown?form.select_data_model=$click.value$</link>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+</form>

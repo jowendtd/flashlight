@@ -1,0 +1,56 @@
+<form>
+  <label>Index Usage Matrix</label>
+  <fieldset submitButton="false">
+    <input type="dropdown" token="select_index">
+      <label>Index</label>
+      <choice value="*">All</choice>
+      <initialValue>*</initialValue>
+      <fieldForLabel>index</fieldForLabel>
+      <fieldForValue>index</fieldForValue>
+      <search>
+        <query>| inputlookup sourcetype_to_index.csv | table index | stats count by index | table index</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <table>
+        <title>Matrix Overview - Index Capacity/Usage</title>
+        <search>
+          <query>| rest /services/data/indexes search="totalEventCount!=0" 
+| search title=$select_index$ 
+| eval coldPath.maxDataSizeMB=if('coldPath.maxDataSizeMB' = 0, null(), 'coldPath.maxDataSizeMB') 
+| eval homePath.maxDataSizeMB=if('homePath.maxDataSizeMB' = 0, null(), 'homePath.maxDataSizeMB') 
+| eval roof=min((coalesce('homePath.maxDataSizeMB', 4294967295) + coalesce('coldPath.maxDataSizeMB', 4294967295)), maxTotalDataSizeMB) 
+| eval span=tostring(currentDBSizeMB) + " / " + tostring(roof) + " MB" 
+| eval Percent=round(currentDBSizeMB * 100 / roof,2) 
+| search 
+    [ inputlookup server_inventory.csv where primary_role="Indexer" 
+    | rename host AS splunk_server 
+    | fields splunk_server] 
+| stats first(span) AS "Capacity vs Limit" by splunk_server title minTime maxTime Percent 
+| rename splunk_server AS Indexer title AS Index minTime AS "Oldest Event" maxTime AS "Newest Event" 
+| table Indexer Index "Capacity vs Limit" "Oldest Event" "Newest Event" Percent 
+| sort - Percent</query>
+          <earliest>0</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">50</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
+        <format type="number" field="Percent">
+          <option name="unit">%</option>
+        </format>
+        <format type="color" field="Percent">
+          <colorPalette type="minMidMax" maxColor="#D93F3C" midColor="#ED8440" minColor="#FFFFFF"></colorPalette>
+          <scale type="minMidMax" maxValue="101" midValue="100" minValue="0"></scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+</form>

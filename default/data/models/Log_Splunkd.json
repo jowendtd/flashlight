@@ -1,0 +1,198 @@
+{
+    "modelName": "Log_Splunkd",
+    "displayName": "Log - Splunkd",
+    "description": "",
+    "objectSummary": {
+        "Event-Based": 1,
+        "Transaction-Based": 0,
+        "Search-Based": 0
+    },
+    "objects": [
+        {
+            "objectName": "Logs_Splunkd_Metrics",
+            "displayName": "Logs - Splunkd Metrics",
+            "parentName": "BaseEvent",
+            "fields": [
+                {
+                    "fieldName": "average_kbps",
+                    "owner": "Logs_Splunkd_Metrics",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "average_kbps",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "component",
+                    "owner": "Logs_Splunkd_Metrics",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "component",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "ev",
+                    "owner": "Logs_Splunkd_Metrics",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "ev",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "group",
+                    "owner": "Logs_Splunkd_Metrics",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "group",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "instantaneous_eps",
+                    "owner": "Logs_Splunkd_Metrics",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "instantaneous_eps",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "instantaneous_kbps",
+                    "owner": "Logs_Splunkd_Metrics",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "instantaneous_kbps",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "kb",
+                    "owner": "Logs_Splunkd_Metrics",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "kb",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "log_level",
+                    "owner": "Logs_Splunkd_Metrics",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "log_level",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "message",
+                    "owner": "Logs_Splunkd_Metrics",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "message",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "name",
+                    "owner": "Logs_Splunkd_Metrics",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "name",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "_time",
+                    "owner": "BaseEvent",
+                    "type": "timestamp",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "_time",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "host",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "host",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "source",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "source",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "sourcetype",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "sourcetype",
+                    "comment": ""
+                }
+            ],
+            "calculations": [],
+            "constraints": [
+                {
+                    "search": "index=_internal sourcetype=splunkd component=Metrics",
+                    "owner": "Logs_Splunkd_Metrics"
+                }
+            ],
+            "lineage": "Logs_Splunkd_Metrics"
+        }
+    ],
+    "objectNameList": [
+        "Logs_Splunkd_Metrics"
+    ]
+}
