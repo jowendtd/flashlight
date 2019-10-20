@@ -49,6 +49,7 @@
       <fieldForValue>host</fieldForValue>
       <search>
         <query>| rest splunk_server_group=dmc_group_search_head /services/server/info
+| fillnull value="" shcluster_label
 | search shcluster_label="$select_shcluster$"
 | fields host
 | sort host</query>

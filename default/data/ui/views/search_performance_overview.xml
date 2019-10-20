@@ -128,6 +128,9 @@
         <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
         <option name="charting.legend.placement">right</option>
         <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <link target="_blank">search?q=index=_internal%20sourcetype=scheduler%20savedsearch_name=*%20status=skipped%20%0A%7C%20stats%20count%20by%20savedsearch_name%20reason&amp;earliest=$time.earliest$&amp;latest=$time.latest$</link>
+        </drilldown>
       </chart>
     </panel>
   </row>
