@@ -30,7 +30,12 @@
       <table>
         <title>HTTP Event Collector Tokens</title>
         <search>
-          <query>| rest splunk_server_group=flashlight_indexer /servicesNS/admin/AIG_HEC_tokens/data/inputs/http | search $search_field$=*$search_value$* disabled=$token_status$ | eval status=if(disabled = 1, "Disabled", "Enabled") | table title description index indexes token status | dedup title description index indexes token status | sort title  | rename title AS Title description AS Description index AS Index indexes AS Indexes token AS Token status AS Status</query>
+          <query>| rest splunk_server_group=dmc_group_indexer services/data/inputs/http
+| search $search_field$=$search_value$ disabled=$token_status$ 
+| eval status=if(disabled = 1, "Disabled", "Enabled") 
+| stats values(title) AS title values(description) AS description values(index) AS index values(indexes) AS indexes values(status) AS status by token
+| sort title 
+| rename title AS Title description AS Description index AS Index indexes AS Indexes token AS Token status AS Status</query>
           <earliest>-24h@h</earliest>
           <latest>now</latest>
         </search>
