@@ -48,7 +48,7 @@
       <single>
         <title>Active Users</title>
         <search>
-          <query>index=_audit $search_head$ action=search info=granted 
+          <query>index=_audit $search_head$ action=search info=granted
 | stats dc(user)</query>
           <earliest>$timeselect.earliest$</earliest>
           <latest>$timeselect.latest$</latest>
@@ -70,9 +70,9 @@
       <single>
         <title>Dashboard Hits</title>
         <search>
-          <query>index=_internal $search_head$ source=*web_access.log* /app/ 
-| rex "GET /[^/]+/app/(?&lt;app_view&gt;[^/ ?]+/[^/ ?]+) " 
-| search app_view=* 
+          <query>index=_internal $search_head$ source=*web_access.log* /app/
+| rex "GET /[^/]+/app/(?&lt;app_view&gt;[^/ ?]+/[^/ ?]+) "
+| search app_view=*
 | stats count(app_view)</query>
           <earliest>$timeselect.earliest$</earliest>
           <latest>$timeselect.latest$</latest>
@@ -94,17 +94,17 @@
       <single>
         <title>Searches</title>
         <search>
-          <query>index=_audit $search_head$ action=search (id=* OR search_id=*) 
-| eval search_id = if(isnull(search_id), id, search_id) 
-| replace '*' with * in search_id 
-| rex "search='(?&lt;search&gt;.*?)', autojoin" 
-| search search_id!=scheduler_* 
-| convert num(total_run_time) 
-| eval user = if(user="n/a", null(), user) 
-| stats min(_time) as _time first(user) as user max(total_run_time) as total_run_time first(search) as search by search_id 
-| search search=search* search!=*_internal* search!=*_audit* 
-| chart median(total_run_time) as "Median search time" perc95(total_run_time) as "95th Percentile search time" sum(total_run_time) as "Total search time" count as "Search count" max(_time) as "Last use" by user 
-| fieldformat "Last use" = strftime('Last use', "%F %T.%Q %:z") 
+          <query>index=_audit $search_head$ action=search (id=* OR search_id=*)
+| eval search_id = if(isnull(search_id), id, search_id)
+| replace '*' with * in search_id
+| rex "search='(?&lt;search&gt;.*?)', autojoin"
+| search search_id!=scheduler_*
+| convert num(total_run_time)
+| eval user = if(user="n/a", null(), user)
+| stats min(_time) as _time first(user) as user max(total_run_time) as total_run_time first(search) as search by search_id
+| search search=search* search!=*_internal* search!=*_audit*
+| chart median(total_run_time) as "Median search time" perc95(total_run_time) as "95th Percentile search time" sum(total_run_time) as "Total search time" count as "Search count" max(_time) as "Last use" by user
+| fieldformat "Last use" = strftime('Last use', "%F %T.%Q %:z")
 | stats sum(Search count)</query>
           <earliest>$timeselect.earliest$</earliest>
           <latest>$timeselect.latest$</latest>
@@ -126,17 +126,17 @@
       <single>
         <title>Scheduled Searches</title>
         <search>
-          <query>index=_audit $search_head$ action=search (id=* OR search_id=*) 
-| eval search_id = if(isnull(search_id), id, search_id) 
-| replace '*' with * in search_id 
-| rex "search='(?&lt;search&gt;.*?)', autojoin" 
-| search search_id=scheduler_* 
-| convert num(total_run_time) 
-| eval user = if(user="n/a", null(), user) 
-| stats min(_time) as _time first(user) as user max(total_run_time) as total_run_time first(search) as search by search_id 
-| search search=search* search!=*_internal* search!=*_audit* 
-| chart median(total_run_time) as "Median search time" perc95(total_run_time) as "95th Percentile search time" sum(total_run_time) as "Total search time" count as "Search count" max(_time) as "Last use" by user 
-| fieldformat "Last use" = strftime('Last use', "%F %T.%Q %:z") 
+          <query>index=_audit $search_head$ action=search (id=* OR search_id=*)
+| eval search_id = if(isnull(search_id), id, search_id)
+| replace '*' with * in search_id
+| rex "search='(?&lt;search&gt;.*?)', autojoin"
+| search search_id=scheduler_*
+| convert num(total_run_time)
+| eval user = if(user="n/a", null(), user)
+| stats min(_time) as _time first(user) as user max(total_run_time) as total_run_time first(search) as search by search_id
+| search search=search* search!=*_internal* search!=*_audit*
+| chart median(total_run_time) as "Median search time" perc95(total_run_time) as "95th Percentile search time" sum(total_run_time) as "Total search time" count as "Search count" max(_time) as "Last use" by user
+| fieldformat "Last use" = strftime('Last use', "%F %T.%Q %:z")
 | stats sum(Search count)</query>
           <earliest>$timeselect.earliest$</earliest>
           <latest>$timeselect.latest$</latest>
@@ -160,7 +160,7 @@
       <chart>
         <title>Search Jobs</title>
         <search>
-          <query>index=_internal sourcetype="scheduler" $search_head$ 
+          <query>index=_internal sourcetype="scheduler" $search_head$
 | timechart span=30m count(status) by host useother=false</query>
           <earliest>$timeselect.earliest$</earliest>
           <latest>$timeselect.latest$</latest>
@@ -213,10 +213,10 @@
       <table>
         <title>Total: $total_scheduler_execution$</title>
         <search base="scheduler_execution_count_base">
-          <query>sort - count 
-| eventstats sum(count) AS total 
-| eval percent = round(count / total * 100, 2)." %" 
-| fields - total 
+          <query>sort - count
+| eventstats sum(count) AS total
+| eval percent = round(count / total * 100, 2)." %"
+| fields - total
 | rename status as Status, app as App, user as User, savedsearch_name as "Report Name", alert_actions as "Alert Actions", count as Count, percent as "Percent of Total"</query>
         </search>
         <option name="dataOverlayMode">heatmap</option>
@@ -238,8 +238,8 @@
       </input>
       <chart>
         <search>
-          <query>index=_internal $search_head$ sourcetype=scheduler (status="completed" OR status="skipped" OR status="deferred" OR status="success" OR status="continued") 
-| eval alert_actions = if(isnull(alert_actions) OR alert_actions == "", "none", alert_actions) 
+          <query>index=_internal $search_head$ sourcetype=scheduler (status="completed" OR status="skipped" OR status="deferred" OR status="success" OR status="continued")
+| eval alert_actions = if(isnull(alert_actions) OR alert_actions == "", "none", alert_actions)
 | timechart partial=f count by $scheduler_execution_timechart_split_by$</query>
           <earliest>$timeselect.earliest$</earliest>
           <latest>$timeselect.latest$</latest>
@@ -261,11 +261,11 @@
       <chart>
         <title>Bundle Size and Time</title>
         <search>
-          <query>index=_internal $search_head$ component=DistributedBundleReplicationManager replication_reason=* 
-| eval bundleSizeKB=substr(bundle_size,1,(LEN(bundle_size)-2)) 
-| stats avg(bundleSizeKB) AS avgBundleSizeKB avg(elapsed_ms) AS avgElapsedMS by host 
-| eval avgBundleSizeKB=round(avgBundleSizeKB,2) 
-| eval avgElapsedMS=round(avgElapsedMS,2) 
+          <query>index=_internal $search_head$ component=DistributedBundleReplicationManager replication_reason=*
+| eval bundleSizeKB=substr(bundle_size,1,(LEN(bundle_size)-2))
+| stats avg(bundleSizeKB) AS avgBundleSizeKB avg(elapsed_ms) AS avgElapsedMS by host
+| eval avgBundleSizeKB=round(avgBundleSizeKB,2)
+| eval avgElapsedMS=round(avgElapsedMS,2)
 | rename avgBundleSizeKB AS "Avg Bundle Size (KB)" avgElapsedMS AS "Avg Time (ms)"</query>
           <earliest>$timeselect.earliest$</earliest>
           <latest>$timeselect.latest$</latest>
@@ -301,12 +301,12 @@
       <table>
         <title>Bundle Transmit Failure</title>
         <search>
-          <query>index=_internal $search_head$ component=DistributedPeerManager "Unable to distribute to peer" 
-| rex field=message "Unable to distribute to peer named (?&lt;peer_name&gt;[\w\d.:]*) " 
-| table _time host peer_name _raw 
-| sort host 
-| stats count by host peer_name 
-| rename host AS "Search Head" peer_name AS "Search Peer" count AS "Tx Failures" 
+          <query>index=_internal $search_head$ component=DistributedPeerManager "Unable to distribute to peer"
+| rex field=message "Unable to distribute to peer named (?&lt;peer_name&gt;[\w\d.:]*) "
+| table _time host peer_name _raw
+| sort host
+| stats count by host peer_name
+| rename host AS "Search Head" peer_name AS "Search Peer" count AS "Tx Failures"
 | sort - "Tx Failures"</query>
           <earliest>$timeselect.earliest$</earliest>
           <latest>$timeselect.latest$</latest>
@@ -318,7 +318,7 @@
         <option name="rowNumbers">false</option>
         <option name="wrap">true</option>
         <drilldown>
-          <link target="_blank">/app/xom_data-and-analytics/server_drilldown?form.splunk_server=$click.value2$</link>
+          <link target="_blank">/app/flashlight/server_drilldown?form.splunk_server=$click.value2$</link>
         </drilldown>
       </table>
     </panel>
@@ -328,9 +328,9 @@
       <table>
         <title>Top Searchers</title>
         <search>
-          <query>index=_internal sourcetype="scheduler" status=success $search_head$ 
-| top user by host 
-| sort - count 
+          <query>index=_internal sourcetype="scheduler" status=success $search_head$
+| top user by host
+| sort - count
 | rename host AS "Search Head" user AS User count AS "# of Searches" percent AS "% of SH Searches"</query>
           <earliest>$timeselect.earliest$</earliest>
           <latest>$timeselect.latest$</latest>
@@ -350,21 +350,21 @@
       <table>
         <title>Expensive Searches</title>
         <search>
-          <query>index=_audit $search_head$ action=search (id=* OR search_id=*) 
-| eval search_id=if(isnull(search_id), id, search_id) 
-| replace '*' with * in search_id 
-| search search_id!=rt_* search_id!=searchparsetmp* 
-| eval search1=search 
-| rex "search='(?&lt;search&gt;.*?)', autojoin" 
-| rex "savedsearch_name=\"(?&lt;savedsearch_name&gt;.*?)\"\]\[" 
-| eval search=case(savedsearch_name!="","Scheduled search name : ".savedsearch_name,isnotnull(search),search,isnull(search) AND savedsearch_name=="","SID : ".search_id) 
-| convert num(total_run_time) 
-| eval user = if(user="n/a", "nobody", user) 
-| stats min(_time) as _time last(user) as user max(total_run_time) as total_run_time last(search) as search by search_id, host 
-| search search_id=* search!=typeahead* search!="| history*" search!=*_internal* search!=*_audit* 
-| fields - search_id 
-| sort - total_run_time 
-| head 10 
+          <query>index=_audit $search_head$ action=search (id=* OR search_id=*)
+| eval search_id=if(isnull(search_id), id, search_id)
+| replace '*' with * in search_id
+| search search_id!=rt_* search_id!=searchparsetmp*
+| eval search1=search
+| rex "search='(?&lt;search&gt;.*?)', autojoin"
+| rex "savedsearch_name=\"(?&lt;savedsearch_name&gt;.*?)\"\]\["
+| eval search=case(savedsearch_name!="","Scheduled search name : ".savedsearch_name,isnotnull(search),search,isnull(search) AND savedsearch_name=="","SID : ".search_id)
+| convert num(total_run_time)
+| eval user = if(user="n/a", "nobody", user)
+| stats min(_time) as _time last(user) as user max(total_run_time) as total_run_time last(search) as search by search_id, host
+| search search_id=* search!=typeahead* search!="| history*" search!=*_internal* search!=*_audit*
+| fields - search_id
+| sort - total_run_time
+| head 10
 | rename host AS "Search Head" _time AS "Time" user AS User total_run_time AS "Total Run Time" search AS Search</query>
           <earliest>$timeselect.earliest$</earliest>
           <latest>$timeselect.latest$</latest>
@@ -400,19 +400,19 @@
       <table>
         <title>User Activity</title>
         <search>
-          <query>index=_audit $search_head$ action=search (id=* OR search_id=*) 
-| eval search_id = if(isnull(search_id), id, search_id) 
-| replace '*' with * in search_id 
-| rex "search='(?&lt;search&gt;.*?)', autojoin" 
-| search search_id!=scheduler_* 
-| convert num(total_run_time) 
-| rex "\,\s+user=(?&lt;user&gt;\S+)," 
-| eval user = if(user="n/a", null(), user) 
-| stats min(_time) as _time first(user) as User max(total_run_time) as total_run_time first(search) as search by search_id host 
-| search search=search* search!=*_internal* search!=*_audit* 
-| stats median(total_run_time) as "Median Search Time (Sec)" perc95(total_run_time) as "95th % Search Time (Sec)" sum(total_run_time) as "Total Search Time (Sec)" count as "Search Count" max(_time) as "Last Use" by User host 
-| fieldformat "Last Use" = strftime('Last Use', "%F %T.%Q %:z") 
-| rename host AS "Search Head" 
+          <query>index=_audit $search_head$ action=search (id=* OR search_id=*)
+| eval search_id = if(isnull(search_id), id, search_id)
+| replace '*' with * in search_id
+| rex "search='(?&lt;search&gt;.*?)', autojoin"
+| search search_id!=scheduler_*
+| convert num(total_run_time)
+| rex "\,\s+user=(?&lt;user&gt;\S+),"
+| eval user = if(user="n/a", null(), user)
+| stats min(_time) as _time first(user) as User max(total_run_time) as total_run_time first(search) as search by search_id host
+| search search=search* search!=*_internal* search!=*_audit*
+| stats median(total_run_time) as "Median Search Time (Sec)" perc95(total_run_time) as "95th % Search Time (Sec)" sum(total_run_time) as "Total Search Time (Sec)" count as "Search Count" max(_time) as "Last Use" by User host
+| fieldformat "Last Use" = strftime('Last Use', "%F %T.%Q %:z")
+| rename host AS "Search Head"
 | sort - "Median Search Time (Sec)"</query>
           <earliest>$timeselect.earliest$</earliest>
           <latest>$timeselect.latest$</latest>
