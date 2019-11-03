@@ -1,6 +1,6 @@
 capability_name,description
 accelerate_datamodel,"Enable or disable acceleration for data models. Set acceleration to true to enable automatic acceleration of this data model. Additional space is required depending on the number of events, fields, and distinct field values in the data. See the Knowledge Manager Manual for more information."
-accelerate_search,Lets the user enable or disable acceleration for reports. The user must also have the schedule_search capability assigned. Works for searches that use transforming commands. See the Knowledge Manager Manual for more information.
+accelerate_search,Lets the user enable or disable acceleration for reports. The user must also have theÂ schedule_searchÂ capability assigned. Works for searches that use transforming commands. See the Knowledge Manager Manual for more information.
 admin_all_objects,"Lets the user access and modify any object in the system regardless of any restrictions set in the objects. For example user objects, search jobs, reports, and knowledge objects. Allows the user to bypasses any ACL restrictions, much the way root access in a *nix environment does."
 change_authentication,Lets the user change authentication settings and reload authentication. See the Securing Splunk Enterprise Manual for more about authentication.
 change_own_password,Lets the user change their own password.
@@ -15,7 +15,7 @@ edit_indexer_cluster,Lets the user edit indexer clusters. See the Managing Index
 edit_input_defaults,Lets the user use the server settings endpoint to change default hostnames for input data.
 edit_monitor,Lets the user add inputs and edit settings for monitoring files. Also used by the standard inputs endpoint and the one-shot input endpoint.
 edit_roles,Lets the user edit roles and change user/role mappings. Used by both the user and role endpoint.
-edit_roles_grantable,"Lets the user edit roles and change user/role mappings for a limited set of roles. Can assign any role to other users. To limit this ability, configure grantableRoles in authorize.conf. For example: grantableRoles = role1;role2;role3"
+edit_roles_grantable,"Lets the user edit roles and change user/role mappings for a limited set of roles. Can assign any role to other users. To limit this ability, configureÂ grantableRolesÂ in authorize.conf. For example:Â grantableRoles = role1;role2;role3"
 edit_scripted,Lets the user create and edit scripted inputs.
 edit_search_head_clustering,Lets the user edit search head clustering settings.
 edit_search_server,"Lets the user edit general distributed search settings like timeouts, heartbeats, and blacklists."
@@ -30,14 +30,14 @@ edit_splunktcp_token,Lets the user edit the Splunktcp token.
 edit_sourcetypes,Lets the user edit sourcetypes. See the Knowledge Manager manual for more information about sourcetypes.
 edit_tcp,Lets the user change settings for receiving general TCP inputs.
 edit_tcp_token,Lets the user change TCP tokens. This is an admin capability and should only be assigned to system administrators.
-edit_telemetry_settings,Opt in or out of product instrumentation. See Share performance data in the Admin Manual.
+edit_telemetry_settings,Opt in or out of product instrumentation. SeeÂ Share performance dataÂ in the Admin Manual.
 edit_token_http,"Lets the user create, edit, display, and remove settings for HTTP token input. Also enables the HTTP Events Collector feature."
 edit_udp,Lets the user change settings for UDP inputs.
-edit_user,"Lets the user create, edit, or remove users. A role with the edit_user capability can assign any role to other users. To limit this ability, configure grantableRoles in authorize.conf. For example: grantableRoles = role1;role2;role3. Also lets a user manage certificates for distributed search."
+edit_user,"Lets the user create, edit, or remove users. A role with theÂ edit_userÂ capability can assign any role to other users. To limit this ability, configureÂ grantableRolesÂ in authorize.conf. For example:Â grantableRoles = role1;role2;role3. Also lets a user manage certificates for distributed search."
 edit_view_html,"Lets the user create, edit, or modify HTML-based views."
 edit_web_settings,Lets the user change settings for web.conf through the system settings endpoint.
 embed_report,Lets the user embed reports and disable embedding for embedded reports.
-export_results_is_visible,Lets the user display or hide the Export Results button in Splunk Web. The default value is to display the button.
+export_results_is_visible,Lets the user display or hide theÂ Export ResultsÂ button in Splunk Web. The default value is to display the button.
 extra_x509_validation,Lets the user add additional x509 validation.
 get_diag,Lets the user get a remote diag from a Splunk instance using the /streams/diag endpoint.
 get_metadata,"Lets the user use the ""metadata"" search processor."
@@ -64,14 +64,14 @@ output_file,"Lets the user create file outputs, including outputcsv (except for 
 pattern_detect,Lets the user see and use the Patterns tab in the Search view.
 request_remote_tok,"Lets the user obtain a remote authentication token, which lets the user perform some distributed peer management and bundle replication and distribute searches to old 4.0.x Splunk instances."
 rest_apps_management,Lets the user edit settings for entries and categories in the python remote apps handler. See restmap.conf for more information.
-rest_apps_view,Lets the user list and view various properties in the Python remote apps handler. See restmap.conf for more information.
+rest_apps_view,Lets the user list and view various properties in the Python remote apps handler. SeeÂ restmap.confÂ for more information.
 rest_properties_get,Lets the user get information from the services/properties endpoint.
 rest_properties_set,Lets the user edit the services/properties endpoint.
 restart_splunkd,Lets the user restart Splunk Enterprise through the server control handler.
 rtsearch,Lets the user run real-time searches.
 run_debug_commands,"Lets the user run debug commands. For example ""Summarize""."
 schedule_search,"Lets the user schedule saved searches, create and update alerts, and review triggered alert information."
-schedule_rtsearch,Lets the user schedule real-time saved searches. The schedule_search capability must also be assigned to the role.
+schedule_rtsearch,Lets the user schedule real-time saved searches. TheÂ schedule_searchÂ capability must also be assigned to the role.
 search,Lets the user run a search. See the Search Manual for more information.
 srchFilter,Lets the user manage search filters. See the Search Manual for more information.
 srchIndexesAllowed,Lets the user run search indexes. See the Search Manual for more information.
