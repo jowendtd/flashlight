@@ -5,11 +5,11 @@
       <chart>
         <title>Clients by Version</title>
         <search>
-          <query>index=_internal source="*metrics.log" group=tcpin_connections | stats dc(guid) AS count by version</query>
+          <query>index=_internal source="*metrics.log" group=tcpin_connections 
+| stats dc(guid) AS count by version</query>
           <earliest>-15m</earliest>
           <latest>now</latest>
         </search>
-        <option name="charting.chart">pie</option>
         <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
         <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
         <option name="charting.axisTitleX.visibility">visible</option>
@@ -19,6 +19,7 @@
         <option name="charting.axisY.scale">linear</option>
         <option name="charting.axisY2.enabled">0</option>
         <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">pie</option>
         <option name="charting.chart.bubbleMaximumSize">50</option>
         <option name="charting.chart.bubbleMinimumSize">10</option>
         <option name="charting.chart.bubbleSizeBy">area</option>
@@ -32,19 +33,27 @@
         <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
         <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
         <option name="charting.legend.placement">right</option>
+        <option name="refresh.display">progressbar</option>
       </chart>
     </panel>
     <panel>
       <table>
         <title>clientName List</title>
         <search>
-          <query>index=_internal sourcetype=splunkd_access method=POST uri="/services/broker/phonehome*" | rex field=file "connection_.+?_(?&lt;mgmt_port&gt;[^_]+)_(?&lt;fqdn&gt;[^_]+)_(?&lt;hostname&gt;[^_]+)_(?&lt;clientName&gt;.*)" | eval clientName=urldecode(clientName) | stats distinct_count(hostname) AS count by clientName | where count &gt; 1 | sort - count | rename count as Clients</query>
+          <query>index=_internal sourcetype=splunkd_access method=POST uri="/services/broker/phonehome*" 
+| rex field=file "connection_.+?_(?&lt;mgmt_port&gt;[^_]+)_(?&lt;fqdn&gt;[^_]+)_(?&lt;hostname&gt;[^_]+)_(?&lt;clientName&gt;.*)" 
+| eval clientName=urldecode(clientName) 
+| stats distinct_count(hostname) AS count by clientName 
+| where count &gt; 1 
+| sort - count 
+| rename count as Clients</query>
           <earliest>-60m@m</earliest>
           <latest>now</latest>
         </search>
         <option name="count">10</option>
         <option name="dataOverlayMode">none</option>
         <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
         <option name="rowNumbers">false</option>
         <option name="wrap">true</option>
       </table>
@@ -55,13 +64,17 @@
       <table>
         <title>Hosts w/ Duplicate GUID</title>
         <search>
-          <query>index=_internal source="*metrics.log" group=tcpin_connections fwdType=uf connectionType=cooked | stats dc(hostname) AS Count values(hostname) AS Hosts values(version) AS Version values(ip) AS "IP Address" values(os) AS "Operating System" by guid | where Count &gt; 1 | sort-Count</query>
+          <query>index=_internal source="*metrics.log" group=tcpin_connections fwdType=uf connectionType=cooked 
+| stats dc(hostname) AS Count values(hostname) AS Hosts values(version) AS Version values(ip) AS "IP Address" values(os) AS "Operating System" by guid 
+| where Count &gt; 1 
+| sort-Count</query>
           <earliest>-15m</earliest>
           <latest>now</latest>
         </search>
         <option name="count">25</option>
         <option name="dataOverlayMode">none</option>
         <option name="drilldown">row</option>
+        <option name="refresh.display">progressbar</option>
       </table>
     </panel>
   </row>
@@ -70,10 +83,28 @@
       <table>
         <title>Unmanaged Forwarders</title>
         <search>
-          <query>index=_internal sourcetype="splunkd" source="*metrics.log" group=tcpin_connections fwdType=uf | stats count latest(_time) AS last_metrics_event values(os) AS os values(version) AS version mean(tcp_KBps) mean(tcp_eps) by hostname, guid | fields - count | eval is_managed="false" | convert ctime(last_metrics_event)  | rex field=hostname "^(?&lt;normalized_hostname&gt;[^\.]+)" | eval normalized_hostname=lower(normalized_hostname)  | join guid type=outer [| rest splunk_server_group=flashlight_deployment_server /services/deployment/server/clients | eval is_managed="true" | rex field=hostname "^(?&lt;normalized_hostname&gt;[^\.]+)" | eval normalized_hostname=lower(normalized_hostname) | rename name AS guid | fields + normalized_hostname, is_managed, guid] | where is_managed="false" | sort - mean(tcp_KBps) | rename hostname AS Hostname guid AS GUID last_metrics_event AS "Last Event" os AS "OS" version AS Version "mean(tcp_KBps)" AS "Tx KBps" "mean(tcp_eps)" AS "Tx EPS" is_managed AS "Managed" normalized_hostname AS "Normalized Hostname" | sort Hostname</query>
+          <query>index=_internal sourcetype="splunkd" source="*metrics.log" group=tcpin_connections fwdType=uf 
+| stats count latest(_time) AS last_metrics_event values(os) AS os values(version) AS version mean(tcp_KBps) mean(tcp_eps) by hostname, guid 
+| fields - count 
+| eval is_managed="false" 
+| convert ctime(last_metrics_event) 
+| rex field=hostname "^(?&lt;normalized_hostname&gt;[^\.]+)" 
+| eval normalized_hostname=lower(normalized_hostname) 
+| join guid type=outer 
+    [| rest splunk_server_group=dmc_group_deployment_server /services/deployment/server/clients 
+    | eval is_managed="true" 
+    | rex field=hostname "^(?&lt;normalized_hostname&gt;[^\.]+)" 
+    | eval normalized_hostname=lower(normalized_hostname) 
+    | rename name AS guid 
+    | fields + normalized_hostname, is_managed, guid] 
+| where is_managed="false" 
+| sort - mean(tcp_KBps) 
+| rename hostname AS Hostname guid AS GUID last_metrics_event AS "Last Event" os AS "OS" version AS Version "mean(tcp_KBps)" AS "Tx KBps" "mean(tcp_eps)" AS "Tx EPS" is_managed AS "Managed" normalized_hostname AS "Normalized Hostname" 
+| sort Hostname</query>
           <earliest>-15m</earliest>
           <latest>now</latest>
         </search>
+        <option name="refresh.display">progressbar</option>
       </table>
     </panel>
   </row>

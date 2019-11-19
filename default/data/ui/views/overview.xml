@@ -30,7 +30,7 @@
       <chart>
         <title>Week on Week Usage</title>
         <search>
-          <query>index=summary_license_history pool=auto_generated_pool_enterprise earliest=-2w@w latest=@d 
+          <query>index=flashlight sourcetype=summary_license_history pool=auto_generated_pool_enterprise earliest=-2w@w latest=@d 
 | eval _time=strptime(date, "%Y/%m/%d") 
 | timechart first(volume_b) AS Total_B first(quota_b) AS Quota_B 
 | eval TotalGB=Total_B/1024/1024/1024 
@@ -115,7 +115,7 @@
       <single>
         <title>Users</title>
         <search>
-          <query>| tstats summariesonly=true distinct_count(Web_Access_Events.user) AS Users from datamodel="Log_Splunk_Web_Access" GROUPBY _time</query>
+          <query>| tstats summariesonly=false distinct_count(Web_Access_Events.user) AS Users from datamodel="Log_Splunk_Web_Access" GROUPBY _time</query>
           <earliest>@d</earliest>
           <latest>now</latest>
         </search>
@@ -207,12 +207,13 @@
           <earliest>0</earliest>
           <latest></latest>
         </search>
-        <option name="drilldown">none</option>
         <option name="colorBy">value</option>
         <option name="colorMode">none</option>
+        <option name="drilldown">none</option>
         <option name="numberPrecision">0</option>
         <option name="rangeColors">["0x65a637","0x6db7c6","0xf7bc38","0xf58f39","0xd93f3c"]</option>
         <option name="rangeValues">[0,30,70,100]</option>
+        <option name="refresh.display">progressbar</option>
         <option name="showSparkline">1</option>
         <option name="showTrendIndicator">1</option>
         <option name="trendColorInterpretation">standard</option>
@@ -225,16 +226,17 @@
       <single>
         <title>Heavy Forwarders</title>
         <search>
-          <query>| inputlookup server_inventory.csv where primary_role="Heavy Forwarder" | stats count</query>
+          <query>| inputlookup server_inventory.csv where primary_role="Heavy Forwarder" OR secondary_role="Heavy Forwarder" | stats count</query>
           <earliest>0</earliest>
           <latest></latest>
         </search>
-        <option name="drilldown">none</option>
         <option name="colorBy">value</option>
         <option name="colorMode">none</option>
+        <option name="drilldown">none</option>
         <option name="numberPrecision">0</option>
         <option name="rangeColors">["0x65a637","0x6db7c6","0xf7bc38","0xf58f39","0xd93f3c"]</option>
         <option name="rangeValues">[0,30,70,100]</option>
+        <option name="refresh.display">progressbar</option>
         <option name="showSparkline">1</option>
         <option name="showTrendIndicator">1</option>
         <option name="trendColorInterpretation">standard</option>
@@ -358,7 +360,7 @@
         </search>
         <option name="colorBy">value</option>
         <option name="colorMode">block</option>
-        <option name="drilldown">none</option>
+        <option name="drilldown">all</option>
         <option name="numberPrecision">0</option>
         <option name="rangeColors">["0x65a637","0xf7bc38","0xf58f39","0xd93f3c"]</option>
         <option name="rangeValues">[0,100,300]</option>
@@ -371,7 +373,7 @@
         <option name="useColors">1</option>
         <option name="useThousandSeparators">1</option>
         <drilldown>
-          <link>/app/flashlight/search_performance_overview</link>
+          <link target="_blank">/app/flashlight/search_performance_overview</link>
         </drilldown>
       </single>
     </panel>
@@ -401,7 +403,7 @@
         <option name="useColors">1</option>
         <option name="useThousandSeparators">1</option>
         <drilldown>
-          <link>/app/flashlight/search_performance_overview</link>
+          <link target="_blank">/app/flashlight/search_performance_drilldown</link>
         </drilldown>
       </single>
     </panel>
@@ -417,10 +419,14 @@
           <latest></latest>
         </search>
         <option name="colorMode">block</option>
+        <option name="drilldown">all</option>
         <option name="rangeColors">["0x65a637","0xf7bc38","0xf58f39","0xd93f3c"]</option>
         <option name="rangeValues">[0,1,5]</option>
         <option name="refresh.display">progressbar</option>
         <option name="useColors">1</option>
+        <drilldown>
+          <link target="_blank">/app/flashlight/orphaned_searches</link>
+        </drilldown>
       </single>
     </panel>
   </row>
@@ -475,7 +481,7 @@
           <latest>now</latest>
         </search>
         <search>
-          <query>index=summary_license_history pool="auto_generated_pool_enterprise" 
+          <query>index=flashlight sourcetype=summary_license_history pool="auto_generated_pool_enterprise" 
 | eval _time=strptime(date, "%Y/%m/%d") 
 | timechart first(volume_b) AS Total_B first(quota_b) AS Quota_B 
 | eval TotalGB=Total_B/1024/1024/1024 
@@ -525,7 +531,7 @@
           <latest>now</latest>
         </search>
         <search>
-          <query>index=summary_storage_history 
+          <query>index=flashlight sourcetype=summary_storage_history 
     [ inputlookup server_inventory.csv where (primary_role="Indexer") 
     | fields host 
     | rename host AS splunk_host] 

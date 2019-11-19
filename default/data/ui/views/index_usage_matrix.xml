@@ -19,7 +19,7 @@
       <table>
         <title>Matrix Overview - Index Capacity/Usage</title>
         <search>
-          <query>| rest /services/data/indexes search="totalEventCount!=0" 
+          <query>| rest splunk_server_group=dmc_group_indexer /services/data/indexes search="totalEventCount!=0" 
 | search title=$select_index$ 
 | eval coldPath.maxDataSizeMB=if('coldPath.maxDataSizeMB' = 0, null(), 'coldPath.maxDataSizeMB') 
 | eval homePath.maxDataSizeMB=if('homePath.maxDataSizeMB' = 0, null(), 'homePath.maxDataSizeMB') 

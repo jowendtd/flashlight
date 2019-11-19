@@ -138,10 +138,12 @@
         </search>
         <option name="count">100</option>
         <option name="dataOverlayMode">none</option>
-        <option name="drilldown">none</option>
-        <option name="refresh.display">progressbar</option>
+        <option name="drilldown">cell</option>
         <option name="rowNumbers">false</option>
         <option name="wrap">true</option>
+        <drilldown>
+          <link target="_blank">/app/flashlight/server_drilldown?form.splunk_server=$click.value$</link>
+        </drilldown>
       </table>
     </panel>
   </row>

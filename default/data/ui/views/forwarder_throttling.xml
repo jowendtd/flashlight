@@ -14,23 +14,23 @@
       <html>
         <p>Throttling occurs when a Forwarder is attempting to transfer more data over the network than it is configured to. Ideally, Forwarders should be able to send data without being throttled, as this introduces latency into the Data Pipeline. Latency can lead to inaccurate data reporting depending on the use-case.</p>
         <p>However, in some cases, this behavior is desired, particularly when available link bandwidth is low. If hosts are found on the report below, it is important to evaluate the reason why such threshold is being reached and adjust as needed.</p>
-        <p>Throughput threshold is controlled in <a href="http://docs.splunk.com/Documentation/Splunk/latest/admin/Limitsconf" target="_blank"> <i>limits.conf</i> </a>:<br /> <br />
+        <p>Throughput threshold is controlled in <a href="http://docs.splunk.com/Documentation/Splunk/latest/admin/Limitsconf" target="_blank"> <i>limits.conf</i> </a>:<br/> <br/>
         <code>
-          [thruput]<br />
-          maxKBps = &lt;integer&gt;<br />
-            <br />
+          [thruput]<br/>
+          maxKBps = &lt;integer&gt;<br/>
+            <br/>
           * If specified and not zero, this limits the speed through the thruput processor 
-            in the ingestion pipeline to the specified rate in kilobytes per second.<br />
+            in the ingestion pipeline to the specified rate in kilobytes per second.<br/>
           * To control the CPU load while indexing, use this to throttle the number of
-            events this indexer processes to the rate (in KBps) you specify.<br />
+            events this indexer processes to the rate (in KBps) you specify.<br/>
           * Note that this limit will be applied per ingestion pipeline. For more information 
             about multiple ingestion pipelines see parallelIngestionPipelines in the
-            server.conf.spec file.<br />
+            server.conf.spec file.<br/>
           * With N parallel ingestion pipelines the thruput limit across all of the ingestion 
             pipelines will be N * maxKBps.
         </code>
-          <br />
-          <br />
+          <br/>
+          <br/>
           <b>Note:</b> By default, on a Universal Forwarder, this limit is set to  <b>256 KBps</b>. Setting <i>maxKBps = 0</i> will result in no limit. On full instances of Splunk zero is the default.
         </p>
       </html>
@@ -60,15 +60,24 @@
       <table>
         <title>Forwarders Reaching maxKBps</title>
         <search id="kbps_base">
-          <query>
-            <![CDATA[ index=_internal sourcetype=splunkd component=ThruputProcessor | rex "Current data throughput\s\((?<maxKBps>\d+)\skb\/s\) has reached maxKBps." | stats count sparkline(count) avg(maxKBps) BY host | eval avg(maxKBps)=round('avg(maxKBps)', 2) | sort - count | rename host AS Hostname count AS "Cap Hits" "sparkline(count)" AS Timeline "avg(maxKBps)" AS "Average KBps" | join Hostname [| metadata type=hosts index=_internal | convert timeformat="%F %T" ctime(lastTime) AS "Last Seen" | rename host AS Hostname | table Hostname "Last Seen"] ]]>
-          </query>
+          <query>index=_internal sourcetype=splunkd component=ThruputProcessor 
+| rex "Current data throughput\s\((?&lt;maxKBps&gt;\d+)\skb\/s\) has reached maxKBps." 
+| stats count sparkline(count) avg(maxKBps) BY host 
+| eval avg(maxKBps)=round('avg(maxKBps)', 2) 
+| sort - count 
+| rename host AS Hostname count AS "Cap Hits" "sparkline(count)" AS Timeline "avg(maxKBps)" AS "Average KBps" 
+| join Hostname 
+    [| metadata type=hosts index=_internal 
+    | convert timeformat="%F %T" ctime(lastTime) AS "Last Seen" 
+    | rename host AS Hostname 
+    | table Hostname "Last Seen"]</query>
           <earliest>$timerange.earliest$</earliest>
           <latest>$timerange.latest$</latest>
         </search>
         <option name="count">20</option>
         <option name="dataOverlayMode">none</option>
         <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
         <option name="rowNumbers">true</option>
         <option name="wrap">true</option>
       </table>

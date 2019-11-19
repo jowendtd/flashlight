@@ -15,14 +15,14 @@
         <search>
           <query>| tstats summariesonly=false sum(License_Usage_Events.b) AS bytes from datamodel="Log_LicenseUsage" WHERE 
     [| inputlookup IndexerLicenseID.csv 
-    | rename id AS "License_Usage_Events.i" 
-    | fields License_Usage_Events.i ] GROUPBY _time $type$ License_Usage_Events.i span=auto 
+    | rename i AS "License_Usage_Events.i" 
+    | fields License_Usage_Events.i ] GROUPBY _time License_Usage_Events.idx License_Usage_Events.i span=auto 
 | eval gb=round(bytes/1024/1024/1024,2) 
 | join License_Usage_Events.i 
     [| inputlookup IndexerLicenseID.csv 
-    | rename id AS License_Usage_Events.i 
-    | fields License_Usage_Events.i host] 
-| chart sum(gb) over host by $type$</query>
+    | rename i AS License_Usage_Events.i 
+    | fields License_Usage_Events.i indexer] 
+| chart sum(gb) over indexer by $type$</query>
           <earliest>@d</earliest>
           <latest>now</latest>
         </search>
@@ -58,7 +58,7 @@
       <table>
         <title>Index Sizes</title>
         <search>
-          <query>| rest splunk_server_group="*" /services/data/indexes 
+          <query>| rest splunk_server_group=dmc_group_indexer /services/data/indexes 
 | stats sum(currentDBSizeMB) AS DBSizeMB by title 
 | eval DBSizeGB=DBSizeMB/1024 
 | table title DBSizeGB 
@@ -66,6 +66,7 @@
           <earliest>0</earliest>
           <latest></latest>
         </search>
+        <option name="count">10</option>
         <option name="refresh.display">progressbar</option>
         <format type="number" field="Size">
           <option name="unit">GB</option>

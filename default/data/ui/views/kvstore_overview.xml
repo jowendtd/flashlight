@@ -31,13 +31,20 @@
       <table>
         <title>KVStore Status</title>
         <search>
-          <query>| rest splunk_server_group=flashlight_search_head /services/kvstore/status | append [| rest splunk_server_group=flashlight_indexer /services/kvstore/status] | table current.replicationStatus current.status splunk_server | lookup server_inventory.csv host AS splunk_server OUTPUT primary_role cluster_label | search cluster_label="$select_cluster$" primary_role="$select_role$" | table splunk_server primary_role cluster_label current.replicationStatus current.status</query>
+          <query>| rest splunk_server_group=dmc_group_search_head /services/kvstore/status 
+| append 
+    [| rest splunk_server_group=dmc_group_search_head /services/kvstore/status] 
+| table current.replicationStatus current.status splunk_server 
+| lookup server_inventory.csv host AS splunk_server OUTPUT primary_role cluster_label 
+| search cluster_label="$select_cluster$" primary_role="$select_role$" 
+| table splunk_server primary_role cluster_label current.replicationStatus current.status</query>
           <earliest>-24h@h</earliest>
           <latest>now</latest>
         </search>
         <option name="count">10</option>
         <option name="dataOverlayMode">none</option>
         <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
       </table>
     </panel>
   </row>

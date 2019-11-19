@@ -2,7 +2,7 @@
   <label>DBConnect Drilldown</label>
   <search id="dbconnect_base">
     <query>
-      | rest splunk_server_group=flashlight_heavy_forwarder /services/data/inputs/mi_input 
+      | rest splunk_server_group=dmc_group_indexer /services/data/inputs/mi_input 
 | where title="$select_dbinput$"
     </query>
     <progress>
@@ -21,7 +21,7 @@
       <fieldForLabel>title</fieldForLabel>
       <fieldForValue>title</fieldForValue>
       <search>
-        <query>| rest splunk_server_group=flashlight_heavy_forwarder /services/data/inputs/mi_input 
+        <query>| rest splunk_server_group=dmc_group_indexer /services/data/inputs/mi_input 
 | stats count by title
 | table title
 | sort title</query>
@@ -57,7 +57,8 @@
       <chart>
         <title>DB Event Timeline</title>
         <search>
-          <query>| tstats count where index=$db_index$ source=$db_source$ sourcetype=$db_sourcetype$ by _time | timechart values(count) AS events</query>
+          <query>| tstats count where index=$db_index$ source=$db_source$ sourcetype=$db_sourcetype$ by _time 
+| timechart values(count) AS events</query>
           <earliest>$time_select.earliest$</earliest>
           <latest>$time_select.latest$</latest>
         </search>

@@ -22,7 +22,7 @@
       <chart>
         <title>Storage Usage (TB)</title>
         <search>
-          <query>index=summary_storage_history 
+          <query>index=flashlight sourcetype=summary_storage_history 
     [| rest splunk_server_group=dmc_group_indexer /services/server/info 
     | search cluster_label="$idx_cluster$" 
     | table host] 
@@ -67,10 +67,11 @@
       <table>
         <title>Current Indexer Storage (TB)</title>
         <search>
-          <query>index=summary_storage_history 
+          <query>index=flashlight sourcetype=summary_storage_history 
     [| rest splunk_server_group=dmc_group_indexer /services/server/info 
-    | search cluster_label="$idx_cluster$" 
-    | table host] 
+    | search cluster_label="$idx_cluster$"
+    | rename host AS splunk_host 
+    | table splunk_host] 
 | eval percUsed=round((diskUsageMB/diskTotalMB)*100,2) 
 | eval diskUsageTB=round(diskUsageMB/1024/1024,3) 
 | eval diskTotalTB=round(diskTotalMB/1024/1024,3) 

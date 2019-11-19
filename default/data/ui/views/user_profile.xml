@@ -131,7 +131,7 @@
       <table>
         <title>Capabilities</title>
         <search>
-          <query>| rest splunk_server_group=flashlight_search_head /services/authentication/users/$user$ 
+          <query>| rest splunk_server_group=dmc_group_search_head /services/authentication/users/$user$ 
 | fields capabilities 
 | mvexpand capabilities 
 | rename capabilities AS capability

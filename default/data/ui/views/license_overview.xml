@@ -103,7 +103,7 @@
       <chart>
         <title>License Usage (GB)</title>
         <search>
-          <query>index=summary_license_history pool=$license_pool$ 
+          <query>index=flashlight sourcetype=summary_license_history pool=$license_pool$ 
 | timechart first(volume_b) AS Total_B first(quota_b) AS Quota_B 
 | eval TotalGB=round(Total_B/1024/1024/1024,2) 
 | eval QuotaGB=round(Quota_B/1024/1024/1024,2) 
@@ -145,7 +145,7 @@
       <chart>
         <title>Week on Week Usage</title>
         <search>
-          <query>index=summary_license_history pool=auto_generated_pool_enterprise earliest=-2w@w latest=@d 
+          <query>index=flashglight sourcetype=summary_license_history pool=auto_generated_pool_enterprise earliest=-2w@w latest=@d 
 | eval _time=strptime(date, "%Y/%m/%d") 
 | timechart first(volume_b) AS Total_B first(quota_b) AS Quota_B 
 | eval TotalGB=Total_B/1024/1024/1024 
@@ -199,7 +199,7 @@
       <chart>
         <title>License Utilization (GB)</title>
         <search>
-          <query>index=summary_license_history pool=$license_pool$ 
+          <query>index=flashlight sourcetype=summary_license_history pool=$license_pool$ 
 | eval _time=strptime(date, "%Y/%m/%d") 
 | timechart first(volume_b) AS Total_B first(quota_b) AS Quota_B 
 | eval TotalGB=Total_B/1024/1024/1024 
@@ -251,7 +251,7 @@
       <chart>
         <title>Data Ingestion</title>
         <search>
-          <query>index=summary_license_history_detail pool=$license_pool$ 
+          <query>index=flashlight sourcetype=summary_license_history_detail pool=$license_pool$ 
 | eval datasource=index_name." [".sourcetype_name."]" 
 | sort - indexedMB 
 | timechart span=1d sum(indexedMB) by datasource limit=10 useother=f</query>

@@ -2,14 +2,14 @@
   <label>Indexer Cluster Status</label>
   <search id="cluster_master_bundle_info">
     <query>
-      | rest splunk_server_group=flashlight_cluster_master /services/admin/clustermasterinfo 
+      | rest splunk_server_group=dmc_group_cluster_master /services/admin/clustermasterinfo 
 | fields active_bundle.checksum active_bundle.timestamp last_validated_bundle.checksum last_validated_bundle.is_valid_bundle last_validated_bundle.timestamp latest_bundle.checksum latest_bundle.timestamp maintenance_mode previous_active_bundle.checksum previous_active_bundle.timestamp site_replication_factor site_search_factor
 | sort splunk_server
     </query>
   </search>
   <search id="indexer_bundle_info">
     <query>
-        | rest splunk_server_group=flashlight_indexer /services/admin/clusterslaveinfo 
+        | rest splunk_server_group=dmc_group_indexer /services/admin/clusterslaveinfo 
 | fields active_bundle.checksum active_bundle.timestamp latest_bundle.checksum latest_bundle.timestamp maintenance_mode restart_state site splunk_server status
  | sort splunk_server
       </query>
@@ -133,11 +133,21 @@
       <table>
         <title>Out-of-Sync Indexers</title>
         <search>
-          <query>| rest splunk_server_group=flashlight_cluster_master /services/admin/clustermasterinfo | table active_bundle.checksum | rename active_bundle.checksum AS cluster_active_bundle.checksum | appendcols [| rest splunk_server_group=flashlight_indexer /services/admin/clusterslaveinfo | table active_bundle.checksum splunk_server] | filldown cluster_active_bundle.checksum | eval syncStatus=if('cluster_active_bundle.checksum' == 'active_bundle.checksum', "Success", "Failed") | where syncStatus == "Failed" | sort splunk_server</query>
+          <query>| rest splunk_server_group=dmc_group_cluster_master /services/admin/clustermasterinfo 
+| table active_bundle.checksum 
+| rename active_bundle.checksum AS cluster_active_bundle.checksum 
+| appendcols 
+    [| rest splunk_server_group=dmc_group_indexer /services/admin/clusterslaveinfo 
+    | table active_bundle.checksum splunk_server] 
+| filldown cluster_active_bundle.checksum 
+| eval syncStatus=if('cluster_active_bundle.checksum' == 'active_bundle.checksum', "Success", "Failed") 
+| where syncStatus == "Failed" 
+| sort splunk_server</query>
           <earliest>-24h@h</earliest>
           <latest>now</latest>
         </search>
         <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
       </table>
     </panel>
   </row>

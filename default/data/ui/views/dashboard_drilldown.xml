@@ -1,7 +1,7 @@
 <form>
   <label>Dashboard Drilldown</label>
   <search id="dashboard_base">
-    <query>| rest splunk_server_group=flashlight_search_head /servicesNS/-/-/saved/searches 
+    <query>| rest splunk_server_group=dmc_group_search_head /servicesNS/-/-/saved/searches 
 | where title="$select_title$"
 | fields title author description dispatch.earliest_time dispatch.latest_time eai:acl* id is_scheduled is_visible next_scheduled_time search splunk_server updated action*</query>
     <earliest>-24h@h</earliest>

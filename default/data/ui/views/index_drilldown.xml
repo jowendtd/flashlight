@@ -1,7 +1,7 @@
 <form>
   <label>Index Drilldown</label>
   <search id="index_base_search">
-    <query>| rest /services/data/indexes/$select_index$
+    <query>| rest splunk_server_group=dmc_group_indexer /services/data/indexes/$select_index$
             | join title splunk_server type=outer [| rest /services/data/indexes-extended/$select_index$]
             | eval bucketCount = if(isnotnull(total_bucket_count), total_bucket_count, 0)
             | eval eventCount = if(isnotnull(totalEventCount), totalEventCount, 0)

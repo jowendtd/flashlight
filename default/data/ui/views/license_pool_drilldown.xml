@@ -61,7 +61,7 @@
       <chart>
         <title>License Utilization (30 Days)</title>
         <search>
-          <query>index=summary_license_history pool=$license_pool$ 
+          <query>index=flashlight sourcetype=summary_license_history pool=$license_pool$ 
 | chart first(volume_b) AS Total_B first(quota_b) AS Quota_B OVER date 
 | eval TotalGB=Total_B/1024/1024/1024 
 | eval QuotaGB=Quota_B/1024/1024/1024 
@@ -107,7 +107,7 @@
       <title>Days Above Average</title>
       <single>
         <search>
-          <query>index=summary_license_history pool=$license_pool$ 
+          <query>index=flashlight sourcetype=summary_license_history pool=$license_pool$ 
 | chart first(volume_b) AS Total_B first(quota_b) AS Quota_B OVER date 
 | eval TotalGB=Total_B/1024/1024/1024 
 | fields date TotalGB 
@@ -134,7 +134,7 @@
       <title>Days Within 10% of Peak</title>
       <single>
         <search>
-          <query>index=summary_license_history pool=$license_pool$ 
+          <query>index=flashlight sourcetype=summary_license_history pool=$license_pool$ 
 | chart first(volume_b) AS Total_B first(quota_b) AS Quota_B OVER date 
 | eval TotalGB=Total_B/1024/1024/1024 
 | fields date TotalGB 
@@ -160,7 +160,7 @@
     <panel>
       <table>
         <search>
-          <query>index=summary_license_history pool=$license_pool$ 
+          <query>index=flashlight sourcetype=summary_license_history pool=$license_pool$ 
 | chart first(volume_b) AS Total_B first(quota_b) AS Quota_B OVER date 
 | eval TotalGB=Total_B/1024/1024/1024 
 | fields date TotalGB 
@@ -187,7 +187,7 @@
       <chart>
         <title>License Utilization GB (30 Days)</title>
         <search>
-          <query>index=summary_license_history pool=$license_pool$ 
+          <query>index=flashlight sourcetype=summary_license_history pool=$license_pool$ 
 | timechart first(volume_b) AS Total_B first(quota_b) AS Quota_B 
 | eval TotalGB=round(Total_B/1024/1024/1024,2) 
 | eval QuotaGB=round(Quota_B/1024/1024/1024,2) 
@@ -232,7 +232,7 @@
       <chart>
         <title>License Utilization (GB)</title>
         <search>
-          <query>index=summary_license_history pool=$license_pool$ 
+          <query>index=flashlight sourcetype=summary_license_history pool=$license_pool$ 
 | timechart first(volume_b) AS Total_B first(quota_b) AS Quota_B 
 | eval TotalGB=Total_B/1024/1024/1024 
 | eval QuotaGB=Quota_B/1024/1024/1024 
