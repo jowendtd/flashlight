@@ -14,11 +14,11 @@
       <chart>
         <title>Search Count and Average Run Time</title>
         <search>
-          <query>index=_audit 
-    [| inputlookup server_inventory.csv where primary_role="Search Head" 
-    | eval host=host."*" 
-    | table host] action=search user!=splunk-system-user search_id=* info=completed 
-| eval run_time_min=round(total_run_time/60,2) 
+          <query>index=_audit
+    [| inputlookup server_inventory.csv where primary_role="Search Head"
+    | eval host=host."*"
+    | table host] action=search user!=splunk-system-user search_id=* info=completed
+| eval run_time_min=round(total_run_time/60,2)
 | timechart count AS "Search Count" avg(run_time_min) AS "Run Time (Min)"</query>
           <earliest>$time.earliest$</earliest>
           <latest>$time.latest$</latest>
@@ -56,25 +56,25 @@
       <table>
         <title>Scheduler Status by Instance</title>
         <search>
-          <query>| rest splunk_server_group=dmc_group_search_head /servicesNS/-/-/saved/searches search="is_scheduled=1" search="disabled=0" 
-| stats count by splunk_server 
-| join splunk_server type=outer 
-    [| rest splunk_server_group=dmc_group_search_head /services/server/status/limits/search-concurrency 
-    | fields splunk_server max_hist_scheduled_searches, max_rt_scheduled_searches] 
-| join splunk_server type=outer 
-    [| rest splunk_server_group=dmc_group_search_head /services/server/status/resource-usage/splunk-processes 
-    | search search_props.role="head" (search_props.type="datamodel acceleration" OR search_props.type="report acceleration" OR search_props.type="scheduled" OR search_props.type="summary indexing") 
-    | dedup search_props.sid 
-    | stats count(eval('search_props.mode'=="historical batch" OR 'search_props.mode'=="historical")) as count_hist_search, count(eval('search_props.mode'=="RT" OR 'search_props.mode'=="RT indexed")) as count_rt_search by splunk_server ] 
-| join splunk_server type=outer 
-    [| rest splunk_server_group=dmc_group_search_head /services/server/info 
-    | fields splunk_server, numberOfCores, numberOfVirtualCores] 
-| eval count_hist_search = if(isnull(count_hist_search), 0, count_hist_search) 
-| eval count_rt_search = if(isnull(count_rt_search), 0, count_rt_search) 
-| eval hist_concur_vs_limit = count_hist_search." / ".max_hist_scheduled_searches 
-| eval rt_concur_vs_limit = count_rt_search." / ".max_rt_scheduled_searches 
-| eval core_info = if(isnull(numberOfCores), "N/A", numberOfCores)." / ".if(isnull(numberOfVirtualCores), "N/A", numberOfVirtualCores) 
-| fields splunk_server, core_info, hist_concur_vs_limit, rt_concur_vs_limit, count 
+          <query>| rest splunk_server_group=dmc_group_search_head /servicesNS/-/-/saved/searches search="is_scheduled=1" search="disabled=0"
+| stats count by splunk_server
+| join splunk_server type=outer
+    [| rest splunk_server_group=dmc_group_search_head /services/server/status/limits/search-concurrency
+    | fields splunk_server max_hist_scheduled_searches, max_rt_scheduled_searches]
+| join splunk_server type=outer
+    [| rest splunk_server_group=dmc_group_search_head /services/server/status/resource-usage/splunk-processes
+    | search search_props.role="head" (search_props.type="datamodel acceleration" OR search_props.type="report acceleration" OR search_props.type="scheduled" OR search_props.type="summary indexing")
+    | dedup search_props.sid
+    | stats count(eval('search_props.mode'=="historical batch" OR 'search_props.mode'=="historical")) as count_hist_search, count(eval('search_props.mode'=="RT" OR 'search_props.mode'=="RT indexed")) as count_rt_search by splunk_server ]
+| join splunk_server type=outer
+    [| rest splunk_server_group=dmc_group_search_head /services/server/info
+    | fields splunk_server, numberOfCores, numberOfVirtualCores]
+| eval count_hist_search = if(isnull(count_hist_search), 0, count_hist_search)
+| eval count_rt_search = if(isnull(count_rt_search), 0, count_rt_search)
+| eval hist_concur_vs_limit = count_hist_search." / ".max_hist_scheduled_searches
+| eval rt_concur_vs_limit = count_rt_search." / ".max_rt_scheduled_searches
+| eval core_info = if(isnull(numberOfCores), "N/A", numberOfCores)." / ".if(isnull(numberOfVirtualCores), "N/A", numberOfVirtualCores)
+| fields splunk_server, core_info, hist_concur_vs_limit, rt_concur_vs_limit, count
 | rename splunk_server as Instance, core_info AS "CPU Cores (Physical / Virtual)", hist_concur_vs_limit as "Concurrency of Historical Scheduled Report (Running/Limit)", rt_concur_vs_limit as "Concurrency of Real-time Scheduled Report (Running/Limit)", count as "Unique Scheduled Reports"</query>
           <earliest>$time.earliest$</earliest>
           <latest>$time.latest$</latest>
@@ -88,18 +88,13 @@
       <chart>
         <title>Scheduler Execution</title>
         <search>
-          <query>index=_internal 
-    [| inputlookup server_inventory.csv where primary_role="Search Head" 
-    | eval host=host."*" 
-    | table host] source=*metrics.log group=searchscheduler 
-| timechart partial=false sum(dispatched) AS Started, sum(skipped) AS Skipped 
-| appendcols 
-    [ search index=_internal 
-        [| inputlookup server_inventory.csv where primary_role="Search Head" 
-        | eval host=host."*" 
-        | table host] sourcetype=scheduler status=continued 
-    | eval savedsearch_id_scheduled_time=savedsearch_id."-".scheduled_time 
-    | timechart dc(savedsearch_id_scheduled_time) AS Deferred]</query>
+          <query>index=_internal
+    [| inputlookup server_inventory.csv where primary_role="Search Head"
+    | eval host=host."*"
+    | table host] sourcetype=scheduler (status="completed" OR status="skipped" OR status="deferred" OR status="success" OR status="continued" OR log_level=ERROR)
+| eval status=IF(log_level == "ERROR", "failed", status)
+| eval alert_actions = if(isnull(alert_actions) OR alert_actions == "", "none", alert_actions)
+| timechart partial=f count by status</query>
           <earliest>$time.earliest$</earliest>
           <latest>$time.latest$</latest>
         </search>
@@ -139,14 +134,14 @@
       <chart>
         <title>Bundle Size and Time</title>
         <search>
-          <query>index=_internal 
-    [| inputlookup server_inventory.csv where primary_role="Search Head" 
-    | eval host=host."*" 
-    | table host] component=DistributedBundleReplicationManager replication_reason=* bundle_size&gt;0 
-| eval bundleSizeKB=substr(bundle_size,1,(LEN(bundle_size)-2)) 
-| stats avg(bundleSizeKB) AS avgBundleSizeKB avg(elapsed_ms) AS avgElapsedMS by host 
-| eval avgBundleSizeKB=round(avgBundleSizeKB,2) 
-| eval avgElapsedMS=round(avgElapsedMS,2) 
+          <query>index=_internal
+    [| inputlookup server_inventory.csv where primary_role="Search Head"
+    | eval host=host."*"
+    | table host] component=DistributedBundleReplicationManager replication_reason=* bundle_size&gt;0
+| eval bundleSizeKB=substr(bundle_size,1,(LEN(bundle_size)-2))
+| stats avg(bundleSizeKB) AS avgBundleSizeKB avg(elapsed_ms) AS avgElapsedMS by host
+| eval avgBundleSizeKB=round(avgBundleSizeKB,2)
+| eval avgElapsedMS=round(avgElapsedMS,2)
 | rename avgBundleSizeKB AS "Avg Bundle Size (KB)" avgElapsedMS AS "Avg Time (ms)"</query>
           <earliest>$time.earliest$</earliest>
           <latest>$time.latest$</latest>
@@ -182,12 +177,12 @@
       <chart>
         <title>Failed Bundle Tx</title>
         <search>
-          <query>index=_internal 
-    [| inputlookup server_inventory.csv where primary_role="Search Head" 
-    | eval host=host."*" 
-    | table host] component=DistributedPeerManager "Unable to distribute to peer" 
-| rex field=message "Unable to distribute to peer named (?&lt;peer_name&gt;[\w\d.:]*) " 
-| table _time host peer_name _raw 
+          <query>index=_internal
+    [| inputlookup server_inventory.csv where primary_role="Search Head"
+    | eval host=host."*"
+    | table host] component=DistributedPeerManager "Unable to distribute to peer"
+| rex field=message "Unable to distribute to peer named (?&lt;peer_name&gt;[\w\d.:]*) "
+| table _time host peer_name _raw
 | timechart count</query>
           <earliest>$time.earliest$</earliest>
           <latest>$time.latest$</latest>
@@ -224,18 +219,18 @@
       <table>
         <title>Search Duration Histogram by Search Head</title>
         <search>
-          <query>index=_audit 
-    [| inputlookup server_inventory.csv where primary_role="Search Head" 
-    | eval host=host."*" 
-    | table host] action=search user!=splunk-system-user search_id=* (info=granted OR info=completed) 
-| eval run_time_min=round(total_run_time/60,2) 
-| stats earliest(_time) AS "Start Time" latest(_time) AS "End Time" count values(search) AS Search values(user) AS User max(run_time_min) AS run_time_min by search_id host 
-| convert ctime(*Time) 
-| where count&gt;1 
-| fields - count 
-| rename search_id AS SID 
-| bucket run_time_min span=5 
-| chart count over run_time_min by host useother=false 
+          <query>index=_audit
+    [| inputlookup server_inventory.csv where primary_role="Search Head"
+    | eval host=host."*"
+    | table host] action=search user!=splunk-system-user search_id=* (info=granted OR info=completed)
+| eval run_time_min=round(total_run_time/60,2)
+| stats earliest(_time) AS "Start Time" latest(_time) AS "End Time" count values(search) AS Search values(user) AS User max(run_time_min) AS run_time_min by search_id host
+| convert ctime(*Time)
+| where count&gt;1
+| fields - count
+| rename search_id AS SID
+| bucket run_time_min span=5
+| chart count over run_time_min by host useother=false
 | rename run_time_min AS "Run Time (Minutes)"</query>
           <earliest>$time.earliest$</earliest>
           <latest>$time.latest$</latest>

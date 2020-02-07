@@ -5,18 +5,18 @@
       <chart>
         <title>Production License</title>
         <search>
-          <query>| inputlookup currentLicenseB.csv where LicensePool="auto_generated_pool_enterprise" 
-| stats sum(totalB) AS totalB 
-| appendcols 
-    [| rest splunk_server_group=dmc_group_license_master /services/licenser/pools 
-    | where title="auto_generated_pool_enterprise" 
-    | table effective_quota 
-    | rename effective_quota AS quota] 
-| eval usedGB=(totalB/1024/1024/1024) 
-| eval quotaGB=(quota/1024/1024/1024) 
-| table usedGB quotaGB 
-| eval half=(quotaGB*.5) 
-| eval threequart=(quotaGB*.75) 
+          <query>| inputlookup currentLicenseB.csv where LicensePool="auto_generated_pool_enterprise"
+| stats sum(totalB) AS totalB
+| appendcols
+    [| rest splunk_server_group=dmc_group_license_master /services/licenser/pools
+    | where title="auto_generated_pool_enterprise"
+    | table effective_quota
+    | rename effective_quota AS quota]
+| eval usedGB=(totalB/1024/1024/1024)
+| eval quotaGB=(quota/1024/1024/1024)
+| table usedGB quotaGB
+| eval half=(quotaGB*.5)
+| eval threequart=(quotaGB*.75)
 | gauge usedGB 0 half threequart quotaGB</query>
           <earliest>@d</earliest>
           <latest>now</latest>
@@ -31,16 +31,16 @@
         <title>Week on Week Usage</title>
         <search>
           <query>index=flashlight sourcetype=summary_license_history pool=auto_generated_pool_enterprise earliest=-2w@w+1d latest=now
-| eval _time=strptime(date, "%Y/%m/%d") 
-| timechart first(volume_b) AS Total_B first(quota_b) AS Quota_B 
-| eval TotalGB=Total_B/1024/1024/1024 
-| eval QuotaGB=Quota_B/1024/1024/1024 
-| fields _time TotalGB 
-| eval marker=case( _time &lt; relative_time(now(), "-1w@w"), "Two Weeks Ago", _time &lt; relative_time(now(), "@w"), "Last Week", true(), "This Week") 
-| eval dow=strftime(_time, "%A") 
-| timechart first(TotalGB) AS gbytes BY marker 
-| eval _time=case( _time &lt; relative_time(now(), "-1w@w"), _time+2*7*86400, _time &lt; relative_time(now(), "@w"), _time+7*86400, true(), _time) 
-| fieldformat _time=strftime(_time, "%b %d %y") 
+| eval _time=strptime(date, "%Y/%m/%d")
+| timechart first(volume_b) AS Total_B first(quota_b) AS Quota_B
+| eval TotalGB=Total_B/1024/1024/1024
+| eval QuotaGB=Quota_B/1024/1024/1024
+| fields _time TotalGB
+| eval marker=case( _time &lt; relative_time(now(), "-1w@w"), "Two Weeks Ago", _time &lt; relative_time(now(), "@w"), "Last Week", true(), "This Week")
+| eval dow=strftime(_time, "%A")
+| timechart first(TotalGB) AS gbytes BY marker
+| eval _time=case( _time &lt; relative_time(now(), "-1w@w"), _time+2*7*86400, _time &lt; relative_time(now(), "@w"), _time+7*86400, true(), _time)
+| fieldformat _time=strftime(_time, "%b %d %y")
 | stats values(*) AS * by _time</query>
           <earliest>-2w@w</earliest>
           <latest>@d+1h</latest>
@@ -79,21 +79,21 @@
       <single>
         <title>Indexing Rate</title>
         <search>
-          <query>| rest splunk_server_group=dmc_group_indexer /services/server/introspection/queues 
-| search title=parsingQueue* OR title=aggQueue* OR title=typingQueue* OR title=indexQueue* 
-| eval fill_perc=round(current_size_bytes / max_size_bytes * 100,2) 
-| fields splunk_server, title, fill_perc 
-| rex field=title "(?&lt;queue_name&gt;^\w+)(?:\.(?&lt;pipeline_number&gt;\d+))?" 
-| eval fill_perc = if(isnotnull(pipeline_number), "pset".pipeline_number.": ".fill_perc, fill_perc) 
-| chart values(fill_perc) over splunk_server by queue_name 
-| eval pset_count = mvcount(parsingQueue) 
-| join type=outer splunk_server 
-    [| rest splunk_server_group=dmc_group_indexer /services/server/introspection/indexer 
-    | eval average_KBps = round(average_KBps, 0) 
-    | eval status = if((reason == ".") OR (reason == "") OR isnull(reason), status, status.": ".reason) 
-    | fields splunk_server, average_KBps, status] 
-| fields splunk_server pset_count average_KBps status parsingQueue aggQueue typingQueue indexQueue 
-| sort-average_KBps 
+          <query>| rest splunk_server_group=dmc_group_indexer /services/server/introspection/queues
+| search title=parsingQueue* OR title=aggQueue* OR title=typingQueue* OR title=indexQueue*
+| eval fill_perc=round(current_size_bytes / max_size_bytes * 100,2)
+| fields splunk_server, title, fill_perc
+| rex field=title "(?&lt;queue_name&gt;^\w+)(?:\.(?&lt;pipeline_number&gt;\d+))?"
+| eval fill_perc = if(isnotnull(pipeline_number), "pset".pipeline_number.": ".fill_perc, fill_perc)
+| chart values(fill_perc) over splunk_server by queue_name
+| eval pset_count = mvcount(parsingQueue)
+| join type=outer splunk_server
+    [| rest splunk_server_group=dmc_group_indexer /services/server/introspection/indexer
+    | eval average_KBps = round(average_KBps, 0)
+    | eval status = if((reason == ".") OR (reason == "") OR isnull(reason), status, status.": ".reason)
+    | fields splunk_server, average_KBps, status]
+| fields splunk_server pset_count average_KBps status parsingQueue aggQueue typingQueue indexQueue
+| sort-average_KBps
 | stats sum(average_KBps)</query>
           <earliest>-24h@h</earliest>
           <latest>now</latest>
@@ -134,8 +134,8 @@
       <single>
         <title>Deployment Clients</title>
         <search>
-          <query>| rest splunk_server_group=dmc_group_deployment_server /services/deployment/server/clients 
-| stats count by hostname 
+          <query>| rest splunk_server_group=dmc_group_deployment_server /services/deployment/server/clients
+| stats count by hostname
 | stats count</query>
           <earliest>@d</earliest>
           <latest>now</latest>
@@ -155,7 +155,7 @@
       <single>
         <title>Hosts (24H)</title>
         <search>
-          <query>| inputlookup daily_host_list.csv 
+          <query>| inputlookup daily_host_list.csv
 | stats count</query>
           <earliest>0</earliest>
           <latest></latest>
@@ -171,7 +171,7 @@
       <single>
         <title>Deployment Servers</title>
         <search>
-          <query>| inputlookup server_inventory.csv where primary_role="Deployment Server" 
+          <query>| inputlookup server_inventory.csv where primary_role="Deployment Server"
 | stats count</query>
           <earliest>0</earliest>
           <latest></latest>
@@ -253,11 +253,11 @@
       <single>
         <title>Node Crashes</title>
         <search>
-          <query>index=_internal sourcetype=splunkd_crash_log 
-| rex "^\[build\s+(?&lt;splunk_build&gt;\d+)" 
-| rex "Cause:\s+(?&lt;crash_cause&gt;[^\n\r]+)" 
-| rex "Crashing\sthread:\s+(?&lt;crash_thread&gt;\S+)" 
-| search crash_thread=* 
+          <query>index=_internal sourcetype=splunkd_crash_log
+| rex "^\[build\s+(?&lt;splunk_build&gt;\d+)"
+| rex "Cause:\s+(?&lt;crash_cause&gt;[^\n\r]+)"
+| rex "Crashing\sthread:\s+(?&lt;crash_thread&gt;\S+)"
+| search crash_thread=*
 | stats count</query>
           <earliest>-24h@h</earliest>
           <latest>now</latest>
@@ -285,9 +285,9 @@
       <single>
         <title>Infrastructure Errors</title>
         <search>
-          <query>index=_internal sourcetype=splunkd 
-    [| inputlookup server_inventory.csv 
-    | table host] (log_level=ERROR) 
+          <query>index=_internal sourcetype=splunkd
+    [| inputlookup server_inventory.csv
+    | table host] (log_level=ERROR)
 | timechart count</query>
           <earliest>-60m@m</earliest>
           <latest>now</latest>
@@ -315,11 +315,11 @@
       <single>
         <title>Data Source Missing &gt; 7D</title>
         <search>
-          <query>| metadata type=sourcetypes 
-| eval sourcetype = lower(sourcetype) 
-| table sourcetype lastTime 
-| fieldformat "lastTime"=strftime('lastTime', "%D %H:%M:%S %p") 
-| where lastTime &lt; relative_time(now(), "-7d@d") 
+          <query>| metadata type=sourcetypes
+| eval sourcetype = lower(sourcetype)
+| table sourcetype lastTime
+| fieldformat "lastTime"=strftime('lastTime', "%D %H:%M:%S %p")
+| where lastTime &lt; relative_time(now(), "-7d@d")
 | stats count</query>
           <earliest>@d</earliest>
           <latest>now</latest>
@@ -349,11 +349,11 @@
       <single>
         <title>Failed Bundle Tx (4H)</title>
         <search>
-          <query>index=_internal 
-    [| inputlookup server_inventory.csv where primary_role="Search Head" 
-    | table host] component=DistributedPeerManager "Unable to distribute to peer" 
-| rex field=message "Unable to distribute to peer named (?&lt;peer_name&gt;[\w\d.:]*) " 
-| table _time host peer_name _raw 
+          <query>index=_internal
+    [| inputlookup server_inventory.csv where primary_role="Search Head"
+    | table host] component=DistributedPeerManager "Unable to distribute to peer"
+| rex field=message "Unable to distribute to peer named (?&lt;peer_name&gt;[\w\d.:]*) "
+| table _time host peer_name _raw
 | timechart count</query>
           <earliest>-4h@m</earliest>
           <latest>now</latest>
@@ -381,10 +381,10 @@
       <single>
         <title>Failed Scheduled Searches Today</title>
         <search>
-          <query>index=_internal 
-    [| inputlookup server_inventory.csv where primary_role="Search Head" 
-    | table host] source=*scheduler.log app="*" savedsearch_name="*" status="skipped" 
-| timechart count AS "Skipped Executions"</query>
+          <query>index=_internal
+    [| inputlookup server_inventory.csv where primary_role="Search Head"
+    | table host] source=*scheduler.log app="*" savedsearch_name="*" status="skipped" OR success=0
+| timechart count AS "Failed/Skipped Executions"</query>
           <earliest>@d</earliest>
           <latest>now</latest>
         </search>
@@ -411,9 +411,9 @@
       <single>
         <title>Orphaned Searches</title>
         <search>
-          <query>| rest splunk_server=* /servicesNS/-/-/saved/searches add_orphan_field=yes count=0 
-| search orphan=1 disabled=0 is_scheduled=1 
-| fields splunk_server title eai:acl.owner eai:acl.app eai:acl.sharing orphan status is_scheduled cron_schedule next_scheduled_time next_scheduled_time actions 
+          <query>| rest splunk_server=* /servicesNS/-/-/saved/searches add_orphan_field=yes count=0
+| search orphan=1 disabled=0 is_scheduled=1
+| fields splunk_server title eai:acl.owner eai:acl.app eai:acl.sharing orphan status is_scheduled cron_schedule next_scheduled_time next_scheduled_time actions
 | stats count</query>
           <earliest>0</earliest>
           <latest></latest>
@@ -435,10 +435,10 @@
       <chart>
         <title>Today's Search Performance</title>
         <search>
-          <query>index=_audit 
-    [| inputlookup server_inventory.csv where primary_role="Search Head" 
-    | table host] action=search user!=splunk-system-user search_id=* info=completed 
-| eval run_time_min=round(total_run_time/60,2) 
+          <query>index=_audit
+    [| inputlookup server_inventory.csv where primary_role="Search Head"
+    | table host] action=search user!=splunk-system-user search_id=* info=completed
+| eval run_time_min=round(total_run_time/60,2)
 | timechart span=10m count AS "Search Count" avg(run_time_min) AS "Run Time (Min)"</query>
           <earliest>@d</earliest>
           <latest>now</latest>
@@ -475,23 +475,23 @@
     <panel>
       <chart>
         <title>License Utilization (GB)</title>
+        <search>
+          <query>index=flashlight sourcetype=summary_license_history pool="auto_generated_pool_enterprise"
+| eval _time=strptime(date, "%Y/%m/%d")
+| timechart first(volume_b) AS Total_B first(quota_b) AS Quota_B
+| eval TotalGB=Total_B/1024/1024/1024
+| eval QuotaGB=Quota_B/1024/1024/1024
+| fields _time TotalGB QuotaGB
+| trendline sma10(TotalGB) AS trend_used
+| predict TotalGB as TotalGB_predicted future_timespan=30
+| trendline sma27(TotalGB_predicted) AS trend_predicted
+| filldown QuotaGB</query>
+          <earliest>-30d@d</earliest>
+          <latest>now</latest>
+        </search>
         <search type="annotation">
           <query>| makeresults | eval _time=strftime(now(),"%D") | eval annotation_label="Today"</query>
           <earliest>-1m@m</earliest>
-          <latest>now</latest>
-        </search>
-        <search>
-          <query>index=flashlight sourcetype=summary_license_history pool="auto_generated_pool_enterprise" 
-| eval _time=strptime(date, "%Y/%m/%d") 
-| timechart first(volume_b) AS Total_B first(quota_b) AS Quota_B 
-| eval TotalGB=Total_B/1024/1024/1024 
-| eval QuotaGB=Quota_B/1024/1024/1024 
-| fields _time TotalGB QuotaGB 
-| trendline sma10(TotalGB) AS trend_used 
-| predict TotalGB as TotalGB_predicted future_timespan=30 
-| trendline sma27(TotalGB_predicted) AS trend_predicted 
-| filldown QuotaGB</query>
-          <earliest>-30d@d</earliest>
           <latest>now</latest>
         </search>
         <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
@@ -525,24 +525,24 @@
     <panel>
       <chart>
         <title>Storage Usage (TB)</title>
+        <search>
+          <query>index=flashlight sourcetype=summary_storage_history
+    [ inputlookup server_inventory.csv where (primary_role="Indexer")
+    | fields host
+    | rename host AS splunk_host]
+| eval diskUsageTB=(diskUsageMB/1024/1024)
+| eval diskTotalTB=(diskTotalMB/1024/1024)
+| stats sum(diskUsageTB) AS diskUsageTB sum(diskTotalTB) AS diskTotalGB by _time
+| timechart first(diskUsageTB) AS diskUsageTB first(diskTotalGB) AS diskTotalGB
+| predict diskUsageTB as diskUsageTB_predicted future_timespan=90
+| filldown diskTotalGB</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
         <search type="annotation">
           <query>| makeresults | eval _time=strftime(now(),"%D") | eval annotation_label="Today"</query>
           <earliest>-1m@m</earliest>
           <latest>now</latest>
-        </search>
-        <search>
-          <query>index=flashlight sourcetype=summary_storage_history 
-    [ inputlookup server_inventory.csv where (primary_role="Indexer") 
-    | fields host 
-    | rename host AS splunk_host] 
-| eval diskUsageTB=(diskUsageMB/1024/1024) 
-| eval diskTotalTB=(diskTotalMB/1024/1024) 
-| stats sum(diskUsageTB) AS diskUsageTB sum(diskTotalTB) AS diskTotalGB by _time 
-| timechart first(diskUsageTB) AS diskUsageTB first(diskTotalGB) AS diskTotalGB 
-| predict diskUsageTB as diskUsageTB_predicted future_timespan=90 
-| filldown diskTotalGB</query>
-          <earliest>0</earliest>
-          <latest></latest>
         </search>
         <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
         <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>

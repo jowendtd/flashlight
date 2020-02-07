@@ -49,9 +49,6 @@
         <option name="charting.chart.style">minimal</option>
         <option name="refresh.display">progressbar</option>
       </chart>
-      <html>
-        Used $LicenseUsedGB$ GB / $LicenseQuotaGB$ GB
-      </html>
     </panel>
     <panel>
       <table>
@@ -145,7 +142,7 @@
       <chart>
         <title>Week on Week Usage</title>
         <search>
-          <query>index=flashglight sourcetype=summary_license_history pool=auto_generated_pool_enterprise earliest=-2w@w latest=@d 
+          <query>index=flashlight sourcetype=summary_license_history pool=auto_generated_pool_enterprise earliest=-2w@w+1d latest=now
 | eval _time=strptime(date, "%Y/%m/%d") 
 | timechart first(volume_b) AS Total_B first(quota_b) AS Quota_B 
 | eval TotalGB=Total_B/1024/1024/1024 

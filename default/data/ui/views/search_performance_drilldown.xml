@@ -1,7 +1,8 @@
 <form>
   <label>Search Performance Drilldown</label>
   <search id="scheduler_execution_count_base">
-    <query>index=_internal $search_head$ sourcetype=scheduler (status="completed" OR status="skipped" OR status="deferred" OR status="success" OR status="continued")
+    <query>index=_internal $search_head$ sourcetype=scheduler (status="completed" OR status="skipped" OR status="deferred" OR status="success" OR status="continued" OR log_level=ERROR)
+          | eval status=IF(log_level == "ERROR", "failed", status)
           | eval alert_actions = if(isnull(alert_actions) OR alert_actions == "", "none", alert_actions)
           | stats count by $scheduler_execution_split_by$</query>
     <earliest>$timeselect.earliest$</earliest>
@@ -238,7 +239,8 @@
       </input>
       <chart>
         <search>
-          <query>index=_internal $search_head$ sourcetype=scheduler (status="completed" OR status="skipped" OR status="deferred" OR status="success" OR status="continued")
+          <query>index=_internal $search_head$ sourcetype=scheduler (status="completed" OR status="skipped" OR status="deferred" OR status="success" OR status="continued" OR log_level=ERROR)
+| eval status=IF(log_level == "ERROR", "failed", status)
 | eval alert_actions = if(isnull(alert_actions) OR alert_actions == "", "none", alert_actions)
 | timechart partial=f count by $scheduler_execution_timechart_split_by$</query>
           <earliest>$timeselect.earliest$</earliest>
@@ -383,15 +385,27 @@
       <table>
         <title>Skipped Searches</title>
         <search>
-          <query>index=_internal $search_head$ source=*scheduler.log app="*" savedsearch_name="*" | stats min(run_time) as "Min Runtime (Sec)", median(run_time) as median_Runtime, max(run_time) as max_Runtime, count(eval(status!="continued")) AS total_exec, count(eval(status=="success")) as "Successful Executions", count(eval(status=="skipped")) AS "Skipped Executions" by app, savedsearch_name, user host | stats first(*) as * by savedsearch_name | eval interval_usage_ratio=round((median_Runtime/schedule_period),2) | search total_exec&gt;0 | rename app AS App median_Runtime AS "Median Runtime (Sec)" max_Runtime AS "Max Runtime (Sec)" savedsearch_name AS "Scheduled Search Name" user AS User total_exec AS "Total Executions" | table host App "Scheduled Search Name" User "Min Runtime (Sec)" "Median Runtime (Sec)" "Max Runtime (Sec)" "Total Executions" "Successful Executions" "Skipped Executions" | sort - "Median Runtime (Sec)" "Total Executions" | search "Skipped Executions" &gt; 0 | sort - "Skipped Executions" | rename host AS "Search Head"</query>
+          <query>index=_internal (host=*$search_head$*) source=*scheduler.log app="*" savedsearch_name="*"
+| eval status=IF(success == 0, "failed", status)
+| stats min(run_time) as "Min Runtime (Sec)", median(run_time) as median_Runtime, max(run_time) as max_Runtime, count(eval(status!="continued")) AS total_exec, count(eval(status=="success")) as "Successful Executions", count(eval(status=="skipped")) AS "Skipped Executions", count(eval(status=="failed")) as "Failed Executions", by app, savedsearch_name, user host
+| stats first(*) as * by savedsearch_name
+| eval interval_usage_ratio=round((median_Runtime/schedule_period),2)
+| search total_exec&gt;0
+| rename app AS App median_Runtime AS "Median Runtime (Sec)" max_Runtime AS "Max Runtime (Sec)" savedsearch_name AS "Scheduled Search Name" user AS User total_exec AS "Total Executions"
+| table host App "Scheduled Search Name" User "Min Runtime (Sec)" "Median Runtime (Sec)" "Max Runtime (Sec)" "Total Executions" "Successful Executions" "Skipped Executions" "Failed Executions"
+| sort - "Median Runtime (Sec)" "Total Executions"
+| search "Skipped Executions" &gt; 0 OR "Failed Executions" &gt; 0
+| sort - "Skipped Executions"
+| rename host AS "Search Head"</query>
           <earliest>$timeselect.earliest$</earliest>
           <latest>$timeselect.latest$</latest>
         </search>
-        <option name="wrap">true</option>
-        <option name="rowNumbers">false</option>
+        <option name="count">10</option>
         <option name="dataOverlayMode">none</option>
         <option name="drilldown">cell</option>
-        <option name="count">10</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">true</option>
       </table>
     </panel>
   </row>

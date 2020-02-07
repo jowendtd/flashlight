@@ -7,9 +7,9 @@
       <map>
         <title>Splunk Hosts by Location</title>
         <search>
-          <query>| inputlookup server_inventory.csv 
-| lookup geo_info.csv id AS geolocation OUTPUT geo_latitude geo_longitude 
-| table host geo_latitude geo_longitude 
+          <query>| inputlookup server_inventory.csv
+| lookup geo_info.csv id AS geolocation OUTPUT geo_latitude geo_longitude
+| table host geo_latitude geo_longitude
 | eval latlong=geo_latitude.":".geo_longitude
 | geostats latfield=geo_latitude longfield=geo_longitude count by latlong globallimit=0</query>
           <earliest>@d</earliest>
@@ -59,13 +59,15 @@
       <input type="dropdown" token="select_geolocation" searchWhenChanged="true">
         <label>Geolocation</label>
         <choice value="*">All</choice>
-        <valuePrefix>"</valuePrefix>
-        <valueSuffix>"</valueSuffix>
-        <delimiter> OR </delimiter>
         <fieldForLabel>geolocation</fieldForLabel>
-        <fieldForValue>geolocation</fieldForValue>
+        <fieldForValue>id</fieldForValue>
         <search>
-          <query>| inputlookup server_inventory.csv | table geolocation | dedup geolocation</query>
+          <query>| inputlookup server_inventory.csv
+| table geolocation
+| dedup geolocation
+| lookup geo_info.csv id AS geolocation OUTPUT city country
+| rename geolocation AS id
+| eval geolocation = city . ", " . country</query>
           <earliest>0</earliest>
           <latest></latest>
         </search>
@@ -92,8 +94,8 @@
         <fieldForLabel>version</fieldForLabel>
         <fieldForValue>version</fieldForValue>
         <search>
-          <query>| rest splunk_server=* /services/server/info 
-| stats count by version 
+          <query>| rest splunk_server=* /services/server/info
+| stats count by version
 | sort version</query>
           <earliest>0</earliest>
           <latest></latest>
@@ -104,34 +106,34 @@
       <table id="df">
         <title>Server Inventory</title>
         <search>
-          <query>| tstats max(Introspection.Disk_Objects.Capacity) AS Capacity max(Introspection.Disk_Objects.Avail) AS Avail max(Introspection.Disk_Objects.Used) AS Used max(Introspection.Disk_Objects.UsedPct) AS UsedPct FROM datamodel=Log_Introspection WHERE nodename=Introspection.Disk_Objects 
-    [ inputlookup server_inventory.csv 
-    | search (primary_role="*" OR secondary_role="*") AND (geolocation=*) AND (operating_system="*") 
-    | eval host=host."*" 
-    | fields host] GROUPBY _time host Introspection.data.mount_point 
-| rex field=host "(?&lt;host&gt;\w+)\." 
-| eventstats max(_time) AS latest by host 
-| where _time=latest 
-| lookup server_inventory.csv host OUTPUT primary_role secondary_role geolocation operating_system ip_address 
+          <query>| tstats max(Introspection.Disk_Objects.Capacity) AS Capacity max(Introspection.Disk_Objects.Avail) AS Avail max(Introspection.Disk_Objects.Used) AS Used max(Introspection.Disk_Objects.UsedPct) AS UsedPct FROM datamodel=Log_Introspection WHERE nodename=Introspection.Disk_Objects
+    [ inputlookup server_inventory.csv
+    | search (primary_role=$select_role$ OR secondary_role=$select_role$) AND (geolocation=$select_geolocation$) AND (operating_system=$select_os$)
+    | eval host=host."*"
+    | fields host] GROUPBY _time host Introspection.data.mount_point
+| rex field=host "(?&lt;host&gt;\w+)\."
+| eventstats max(_time) AS latest by host
+| where _time=latest
+| lookup server_inventory.csv host OUTPUT primary_role secondary_role geolocation operating_system ip_address
 | lookup geo_info.csv id AS geolocation OUTPUT city country
 | eval geolocation = city . ", " . country
-| rename Introspection.data.mount_point AS Mount host AS Hostname primary_role AS "Primary Role" secondary_role AS "Secondary Role" geolocation AS "Geolocation" operating_system AS "Operating System" ip_address AS "IP Address" Capacity AS "Capacity (GB)" 
-| join type=left Hostname 
-    [| rest splunk_server_group=* /services/server/status/resource-usage/hostwide 
-    | eval cpu_count = if(isnull(cpu_count), "N/A", cpu_count) 
-    | eval mem = round(mem, 0) 
-    | fields splunk_server, cpu_count, mem 
-    | rename splunk_server AS Hostname, cpu_count AS "CPU Cores", mem AS "Memory (MB)"] 
-| join type=left Hostname 
-    [| rest splunk_server_group=* /services/server/info 
-    | rename splunk_server AS Hostname guid AS GUID 
-    | table Hostname GUID ] 
-| join type=left Hostname 
-    [| rest splunk_server_group=* /services/server/info 
-    | table splunk_server version 
-    | search version="*" 
-    | rename splunk_server AS Hostname version AS Version] 
-| stats values("Primary Role") AS "Primary Role" values("Secondary Role") AS "Secondary Role" values(Geolocation) AS Geolocation values("Operating System") AS "Operating System" values("IP Address") AS "IP Address" values(Mount) AS Mount values("Capacity (GB)") AS "Capacity (GB)" values(Version) AS Version values(GUID) AS GUID BY Hostname 
+| rename Introspection.data.mount_point AS Mount host AS Hostname primary_role AS "Primary Role" secondary_role AS "Secondary Role" geolocation AS "Geolocation" operating_system AS "Operating System" ip_address AS "IP Address" Capacity AS "Capacity (GB)"
+| join type=left Hostname
+    [| rest splunk_server_group=* /services/server/status/resource-usage/hostwide
+    | eval cpu_count = if(isnull(cpu_count), "N/A", cpu_count)
+    | eval mem = round(mem, 0)
+    | fields splunk_server, cpu_count, mem
+    | rename splunk_server AS Hostname, cpu_count AS "CPU Cores", mem AS "Memory (MB)"]
+| join type=left Hostname
+    [| rest splunk_server_group=* /services/server/info
+    | rename splunk_server AS Hostname guid AS GUID
+    | table Hostname GUID ]
+| join type=left Hostname
+    [| rest splunk_server_group=* /services/server/info
+    | table splunk_server version
+    | search version="*"
+    | rename splunk_server AS Hostname version AS Version]
+| stats values("Primary Role") AS "Primary Role" values("Secondary Role") AS "Secondary Role" values(Geolocation) AS Geolocation values("Operating System") AS "Operating System" values("IP Address") AS "IP Address" values(Mount) AS Mount values("Capacity (GB)") AS "Capacity (GB)" values(Version) AS Version values(GUID) AS GUID BY Hostname
 | sort "Primary Role"</query>
           <earliest>@d</earliest>
           <latest>now</latest>
@@ -139,6 +141,7 @@
         <option name="count">100</option>
         <option name="dataOverlayMode">none</option>
         <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
         <option name="rowNumbers">false</option>
         <option name="wrap">true</option>
         <drilldown>

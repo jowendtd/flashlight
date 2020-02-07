@@ -5,9 +5,10 @@
       <table>
         <title>Current Deployment Clients</title>
         <search>
-          <query>| rest splunk_server_group=dmc_group_deployment_server /services/deployment/server/clients 
-| stats dc(hostname) AS clients by splunk_server 
-| sort splunk_server</query>
+          <query>| rest splunk_server_group=dmc_group_deployment_server /services/deployment/server/clients
+| stats dc(hostname) AS clients by splunk_server
+| sort splunk_server
+| addcoltotals</query>
           <earliest>-24h@h</earliest>
           <latest>now</latest>
         </search>
@@ -21,7 +22,7 @@
       <chart>
         <title>Client PhoneHome Attempts</title>
         <search>
-          <query>index=_internal sourcetype=splunkd component=HttpPubSubConnection message="Running phone uri*" 
+          <query>index=_internal sourcetype=splunkd component=HttpPubSubConnection "Running phone uri*"
 | timechart count</query>
           <earliest>-4h@m</earliest>
           <latest>now</latest>
@@ -38,7 +39,7 @@
       <chart>
         <title>Client PhoneHome Success</title>
         <search>
-          <query>index=_internal sourcetype=splunkd component=DC:HandshakeReplyHandler message="Handshake done." 
+          <query>index=_internal sourcetype=splunkd component=DC:HandshakeReplyHandler "Handshake done."
 | timechart count</query>
           <earliest>-4h@m</earliest>
           <latest>now</latest>
@@ -55,7 +56,7 @@
       <chart>
         <title>Client PhoneHome Failures</title>
         <search>
-          <query>index=_internal sourcetype=splunkd component=HttpPubSubConnection message="Could not obtain connection*" 
+          <query>index=_internal sourcetype=splunkd component=HttpPubSubConnection "Could not obtain connection*"
 | timechart count</query>
           <earliest>-4h@m</earliest>
           <latest>now</latest>
@@ -74,11 +75,11 @@
       <table>
         <title>Recent Check-Ins</title>
         <search>
-          <query>index=_internal 
+          <query>index=_internal
     [| inputlookup server_inventory.csv where primary_role="Deployment Server" OR secondary_role="Deployment Server"
-    | table host ] component=PubSubSvr channel="deploymentServer/phoneHome/default/reply*" 
-| rex field=message "Subscribed: channel=deploymentServer/phoneHome/default/reply/(?&lt;deploymentClient&gt;\w*\d*)" 
-| eval Date=strftime(_time,"%m/%d/%Y %I:%M:%S %p") 
+    | table host ] component=PubSubSvr channel="deploymentServer/phoneHome/default/reply*"
+| rex field=_raw "Subscribed: channel=deploymentServer/phoneHome/default/reply/(?&lt;deploymentClient&gt;\w*\d*)"
+| eval Date=strftime(_time,"%m/%d/%Y %I:%M:%S %p")
 | table Date deploymentClient host</query>
           <earliest>-4h@m</earliest>
           <latest>now</latest>
